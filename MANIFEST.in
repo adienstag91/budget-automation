@@ -1,0 +1,29 @@
+# Budget Automation - Package Manifest
+
+# Include documentation
+include README.md
+include LICENSE
+include .env.example
+include requirements.txt
+
+# Include SQL schema
+recursive-include src/budget_automation/db *.sql
+
+# Include data files
+recursive-include data/taxonomy *.json
+recursive-include data/rules *.sql
+recursive-include data/analysis *.json
+
+# Include documentation
+recursive-include docs *.md
+
+# Exclude development files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store
+global-exclude *.swp
+
+# Exclude sensitive data
+exclude data/uploads/*
+exclude data/exports/*
+exclude .env

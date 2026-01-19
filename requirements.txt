@@ -1,0 +1,24 @@
+# Budget Automation - Python Dependencies
+
+# Database
+psycopg2-binary==2.9.9    # PostgreSQL adapter (binary version, easier install)
+
+# AI/LLM (optional - only needed if using Claude API for categorization)
+anthropic==0.39.0          # Claude API client
+
+# CLI & utilities
+python-dotenv==1.0.0       # Environment variable management
+
+# Future dependencies (Phase 2+)
+# Uncomment when building Streamlit UI:
+# streamlit==1.29.0        # Web UI framework
+# pandas==2.1.4            # Data manipulation
+# plotly==5.18.0           # Interactive charts
+# altair==5.2.0            # Declarative visualizations
+
+# Development dependencies (optional)
+# pytest==7.4.3            # Testing framework
+# pytest-cov==4.1.0        # Test coverage
+# black==23.12.1           # Code formatter
+# flake8==7.0.0            # Linter
+# mypy==1.8.0              # Type checker

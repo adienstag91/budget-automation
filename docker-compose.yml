@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: budget_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: budget_user
+      POSTGRES_PASSWORD: budget_password_local_dev
+      POSTGRES_DB: budget_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/budget_automation/db/db_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      # Future: Add seed data here
+      # - ./pipeline/seed_taxonomy.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U budget_user -d budget_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: pgAdmin for database management (comment out if not needed)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: budget_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@budget.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    profiles:
+      - tools  # Only start with: docker-compose --profile tools up
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: budget_network

@@ -1,0 +1,2970 @@
+{
+  "high_confidence_rules": [
+    {
+      "merchant_norm": "AMAZON",
+      "category": "Shopping",
+      "subcategory": "Amazon",
+      "occurrences": 506,
+      "consistency": 0.9940711462450593,
+      "sample_descriptions": [
+        "Amazon.com*HS9ZT06U2",
+        "Amazon.com*RZ2UC0K22",
+        "AMZN Mktp US*TD9VS7OB0"
+      ]
+    },
+    {
+      "merchant_norm": "STOP & SHOP",
+      "category": "Groceries",
+      "subcategory": "Stop & Shop",
+      "occurrences": 270,
+      "consistency": 0.9888888888888889,
+      "sample_descriptions": [
+        "DD *DOORDASH STOPSHOP",
+        "STOP & SHOP 2582",
+        "STOP & SHOP 2582 85 EA LONG BEACH NY 04/09"
+      ]
+    },
+    {
+      "merchant_norm": "MTA SUBWAY",
+      "category": "Travel",
+      "subcategory": "MTA",
+      "occurrences": 209,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MTA*NYCT",
+        "MTA*NYCT PAYGO"
+      ]
+    },
+    {
+      "merchant_norm": "VENMO",
+      "category": "Venmo",
+      "subcategory": "Venmo",
+      "occurrences": 163,
+      "consistency": 0.9079754601226994,
+      "sample_descriptions": [
+        "VENMO"
+      ]
+    },
+    {
+      "merchant_norm": "KEY FOOD",
+      "category": "Groceries",
+      "subcategory": "Key Food",
+      "occurrences": 123,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "KEY FOOD  663 E PARK A LONG BEACH NY         08/10",
+        "HOLIDAY FARMS-KEY FOOD #1",
+        "KEY FOOD 663 E PARK A LONG BEACH NY 06/19"
+      ]
+    },
+    {
+      "merchant_norm": "MTA LIRR",
+      "category": "Travel",
+      "subcategory": "MTA",
+      "occurrences": 108,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MTA*LIRR ONBOARDTICKET",
+        "MTA*LIRR ONBOARDTICKET JAMAICA NY            10/05",
+        "MTA*LIRR ETIX TICKET"
+      ]
+    },
+    {
+      "merchant_norm": "TRADER JOES",
+      "category": "Groceries",
+      "subcategory": "Trader Joes",
+      "occurrences": 94,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TRADER JOE'S #552 QPS",
+        "TRADER JOE S #552",
+        "TRADER JOE S #55 TRADE OCEANSIDE NY  405965  08/07"
+      ]
+    },
+    {
+      "merchant_norm": "AUTOMATIC PAYMENT - THANK",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 84,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "AUTOMATIC PAYMENT - THANK"
+      ]
+    },
+    {
+      "merchant_norm": "OTF OCEANSIDE 1344",
+      "category": "Health & Wellness",
+      "subcategory": "OTF",
+      "occurrences": 78,
+      "consistency": 0.9230769230769231,
+      "sample_descriptions": [
+        "OTF OCEANSIDE 1344"
+      ]
+    },
+    {
+      "merchant_norm": "COSTCO",
+      "category": "Groceries",
+      "subcategory": "Costco",
+      "occurrences": 76,
+      "consistency": 0.9736842105263158,
+      "sample_descriptions": [
+        "COSTCO WHSE #1215 OCEANSIDE NY       009583  09/15",
+        "COSTCO WHSE #0226",
+        "COSTCO WHSE #1215"
+      ]
+    },
+    {
+      "merchant_norm": "CVS",
+      "category": "Health & Wellness",
+      "subcategory": "CVS",
+      "occurrences": 69,
+      "consistency": 0.9565217391304348,
+      "sample_descriptions": [
+        "CVS/PHARMACY #01963",
+        "CVS/PHARMACY #01938",
+        "CVS/PHARMACY #02403"
+      ]
+    },
+    {
+      "merchant_norm": "DELICACIES GOURMET",
+      "category": "Food & Drink",
+      "subcategory": "Work",
+      "occurrences": 67,
+      "consistency": 0.9402985074626866,
+      "sample_descriptions": [
+        "DELICACIES GOURMET"
+      ]
+    },
+    {
+      "merchant_norm": "COSTCO GAS",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Gas",
+      "occurrences": 63,
+      "consistency": 0.9523809523809523,
+      "sample_descriptions": [
+        "COSTCO GAS #1215",
+        "COSTCO GAS #1215 OCEANSIDE NY        061565  08/11",
+        "COSTCO GAS #1215 OCEANSIDE NY        041211  08/07"
+      ]
+    },
+    {
+      "merchant_norm": "EXXON",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Gas",
+      "occurrences": 61,
+      "consistency": 0.9672131147540983,
+      "sample_descriptions": [
+        "EXXON MICHAEL T. LYNCH",
+        "EXXON LONG BEACH AUTOMOTI",
+        "EXXON GREAT NECK PETRO"
+      ]
+    },
+    {
+      "merchant_norm": "VENMO CASHOUT",
+      "category": "Venmo",
+      "subcategory": "Venmo",
+      "occurrences": 57,
+      "consistency": 0.9824561403508771,
+      "sample_descriptions": [
+        "VENMO CASHOUT",
+        "VENMO            CASHOUT",
+        "VENMO CASHOUT PPD ID: 5264681992"
+      ]
+    },
+    {
+      "merchant_norm": "CHASE CREDIT CARD PAYMENT",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 56,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CHASE CREDIT CRD AUTOPAY",
+        "CHASE CREDIT CRD AUTOPAY                    PPD ID: 4760039224",
+        "CHASE CREDIT CRD AUTOPAY PPD ID: 4760039224"
+      ]
+    },
+    {
+      "merchant_norm": "APPLE.COM/BILL",
+      "category": "Subscription",
+      "subcategory": "iCloud",
+      "occurrences": 54,
+      "consistency": 0.9444444444444444,
+      "sample_descriptions": [
+        "APPLE.COM/BILL"
+      ]
+    },
+    {
+      "merchant_norm": "LYFT",
+      "category": "Travel",
+      "subcategory": "Uber/Lyft",
+      "occurrences": 49,
+      "consistency": 0.9591836734693877,
+      "sample_descriptions": [
+        "LYFT   RIDE SAT 8AM",
+        "LYFT   RIDE SAT 5PM",
+        "LYFT RIDE MON 2AM"
+      ]
+    },
+    {
+      "merchant_norm": "EAST PARK BEVERAGE",
+      "category": "Food & Drink",
+      "subcategory": "Alcohol",
+      "occurrences": 46,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "EAST PARK BEVERAGE"
+      ]
+    },
+    {
+      "merchant_norm": "LUXOTTICA RETAIL DIRECT DEP PPD ID:",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 40,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LUXOTTICA RETAIL DIRECT DEP                 PPD ID: 9111111101",
+        "LUXOTTICA RETAIL DIRECT DEP                 PPD ID: 9111111103",
+        "LUXOTTICA RETAIL DIRECT DEP PPD ID: 9111111101"
+      ]
+    },
+    {
+      "merchant_norm": "ATM WITHDRAWAL",
+      "category": "Fees & Adjustments",
+      "subcategory": "Withdrawal",
+      "occurrences": 38,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ATM WITHDRAWAL 009328 06/02220 E PAR",
+        "ATM WITHDRAWAL 005725 07/07220 E PAR",
+        "ATM WITHDRAWAL 004854 07/27220 E PAR"
+      ]
+    },
+    {
+      "merchant_norm": "CHASE",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 36,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CHASE"
+      ]
+    },
+    {
+      "merchant_norm": "SPOTIFY USA",
+      "category": "Subscription",
+      "subcategory": "Music",
+      "occurrences": 35,
+      "consistency": 0.9428571428571428,
+      "sample_descriptions": [
+        "Spotify USA"
+      ]
+    },
+    {
+      "merchant_norm": "OPTIMUM 7858",
+      "category": "Bills & Utilities",
+      "subcategory": "Wifi",
+      "occurrences": 33,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "OPTIMUM 7858"
+      ]
+    },
+    {
+      "merchant_norm": "FID",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 33,
+      "consistency": 0.9696969696969697,
+      "sample_descriptions": [
+        "FID"
+      ]
+    },
+    {
+      "merchant_norm": "LUXOTTICA",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 32,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LUXOTTICA"
+      ]
+    },
+    {
+      "merchant_norm": "SEABREEZE GROCERY",
+      "category": "Health & Wellness",
+      "subcategory": "Juul",
+      "occurrences": 30,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SEABREEZE GROCERY"
+      ]
+    },
+    {
+      "merchant_norm": "HEADWAY",
+      "category": "Health & Wellness",
+      "subcategory": "Therapy",
+      "occurrences": 30,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "HEADWAY"
+      ]
+    },
+    {
+      "merchant_norm": "LIBERTY PET INSU CE",
+      "category": "Bills & Utilities",
+      "subcategory": "Penny",
+      "occurrences": 28,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LIBERTY PET INSU   CE",
+        "LIBERTY PET INSU CE"
+      ]
+    },
+    {
+      "merchant_norm": "PAYPAL UBER",
+      "category": "Travel",
+      "subcategory": "Uber/Lyft",
+      "occurrences": 25,
+      "consistency": 0.96,
+      "sample_descriptions": [
+        "PAYPAL *UBER"
+      ]
+    },
+    {
+      "merchant_norm": "ALL CREATURES VETERINARY",
+      "category": "Bills & Utilities",
+      "subcategory": "Penny",
+      "occurrences": 24,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ALL CREATURES VETERINARY"
+      ]
+    },
+    {
+      "merchant_norm": "NYS",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 23,
+      "consistency": 0.9130434782608695,
+      "sample_descriptions": [
+        "NYS"
+      ]
+    },
+    {
+      "merchant_norm": "FID BKG SVC LLC MONEYLINE PPD ID:",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 22,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "FID BKG SVC LLC MONEYLINE PPD ID: 0368004600",
+        "FID BKG SVC LLC MONEYLINE PPD ID: 1035141383"
+      ]
+    },
+    {
+      "merchant_norm": "MOVIEPASS",
+      "category": "Entertainment",
+      "subcategory": "Movies",
+      "occurrences": 22,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MOVIEPASS"
+      ]
+    },
+    {
+      "merchant_norm": "NORTHWESTERN",
+      "category": "Bills & Utilities",
+      "subcategory": "Life Insurance",
+      "occurrences": 22,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NORTHWESTERN"
+      ]
+    },
+    {
+      "merchant_norm": "BANK INTEREST",
+      "category": "Fees & Adjustments",
+      "subcategory": "Interest",
+      "occurrences": 20,
+      "consistency": 0.95,
+      "sample_descriptions": [
+        "INTEREST PAYMENT"
+      ]
+    },
+    {
+      "merchant_norm": "REMOTE",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 20,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "REMOTE"
+      ]
+    },
+    {
+      "merchant_norm": "COFFEE NUT CAFE",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 19,
+      "consistency": 0.9473684210526315,
+      "sample_descriptions": [
+        "COFFEE NUT CAFE"
+      ]
+    },
+    {
+      "merchant_norm": "TRAVEL CREDIT $300/YEAR",
+      "category": "Fees & Adjustments",
+      "subcategory": "Fees & Adjustments",
+      "occurrences": 19,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TRAVEL CREDIT $300/YEAR"
+      ]
+    },
+    {
+      "merchant_norm": "LIPA DIRECTPAY PPD ID:",
+      "category": "Bills & Utilities",
+      "subcategory": "Electricity",
+      "occurrences": 18,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LIPA             DIRECTPAY                  PPD ID: 1563585000",
+        "LIPA DIRECTPAY PPD ID: 1563585000",
+        "LIPA  DIRECTPAY PPD ID: 1563585000"
+      ]
+    },
+    {
+      "merchant_norm": "CALAKE2FDI300250 WEB PAY CALAUTO WEB ID:",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Payment",
+      "occurrences": 18,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CALAKE2FDI300250 WEB PAY    CALAUTO         WEB ID: 1320485632",
+        "CALAKE2FDI300250 WEB PAY CALAUTO WEB ID: 1320485632",
+        "CALAKE2FDI300250 WEB PAY CALAUTO  WEB ID: 1320485632"
+      ]
+    },
+    {
+      "merchant_norm": "NGRID37 NGRID37WEB WEB ID:",
+      "category": "Bills & Utilities",
+      "subcategory": "Gas Bill",
+      "occurrences": 17,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NGRID37          NGRID37WEB 4951958020      WEB ID: 9111019782",
+        "NGRID37 NGRID37WEB 4951958020 WEB ID: 9111019782"
+      ]
+    },
+    {
+      "merchant_norm": "GEICO PREM COLL PPD ID:",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Insurance",
+      "occurrences": 17,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "GEICO PREM COLL PPD ID: 3530075853",
+        "GEICO            PREM COLL                  PPD ID: 3530075853"
+      ]
+    },
+    {
+      "merchant_norm": "DUNKIN' MOBILE AP",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 15,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "DUNKIN' MOBILE AP"
+      ]
+    },
+    {
+      "merchant_norm": "NYS DOL UI DD UI DD PPD ID:",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 15,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NYS DOL UI DD UI DD PPD ID: 1133886111",
+        "NYS DOL UI DD    UI DD                      PPD ID: 1133886111"
+      ]
+    },
+    {
+      "merchant_norm": "NGRID37",
+      "category": "Bills & Utilities",
+      "subcategory": "Gas Bill",
+      "occurrences": 15,
+      "consistency": 0.9333333333333333,
+      "sample_descriptions": [
+        "NGRID37"
+      ]
+    },
+    {
+      "merchant_norm": "LIPA",
+      "category": "Bills & Utilities",
+      "subcategory": "Electricity",
+      "occurrences": 15,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LIPA"
+      ]
+    },
+    {
+      "merchant_norm": "SOLACE THERAPY",
+      "category": "Health & Wellness",
+      "subcategory": "Therapy",
+      "occurrences": 14,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SOLACE THERAPY"
+      ]
+    },
+    {
+      "merchant_norm": "GREEK COVE GREEK COVE",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 14,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "GREEK COVE* GREEK COVE"
+      ]
+    },
+    {
+      "merchant_norm": "PAYPAL UBERBV EATS",
+      "category": "Reimbursed",
+      "subcategory": "Andrew Work",
+      "occurrences": 14,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PAYPAL *UBERBV EATS"
+      ]
+    },
+    {
+      "merchant_norm": "CARTERS INC.",
+      "category": "Baby",
+      "subcategory": "Clothes",
+      "occurrences": 14,
+      "consistency": 0.9285714285714286,
+      "sample_descriptions": [
+        "carters Inc.",
+        "carters  Inc."
+      ]
+    },
+    {
+      "merchant_norm": "GEICO",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Insurance",
+      "occurrences": 14,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "GEICO"
+      ]
+    },
+    {
+      "merchant_norm": "INTEREST",
+      "category": "Fees & Adjustments",
+      "subcategory": "Interest",
+      "occurrences": 14,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "INTEREST"
+      ]
+    },
+    {
+      "merchant_norm": "C9998 HAIR VENTU DIR DEP PPD ID:",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 13,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "C9998 HAIR VENTU DIR DEP PPD ID: 7462283648"
+      ]
+    },
+    {
+      "merchant_norm": "LONG BEACH AUTOMOTIVE &",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Gas",
+      "occurrences": 13,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LONG BEACH AUTOMOTIVE &"
+      ]
+    },
+    {
+      "merchant_norm": "PAYPAL INST XFER HAIRSTORY WEB ID: PAYPALSI77",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 13,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PAYPAL INST XFER HAIRSTORY WEB ID: PAYPALSI77"
+      ]
+    },
+    {
+      "merchant_norm": "MSG CONCESSIONS",
+      "category": "Entertainment",
+      "subcategory": "Concessions",
+      "occurrences": 13,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MSG CONCESSIONS"
+      ]
+    },
+    {
+      "merchant_norm": "C6705 RESONANCE DIR DEP PPD ID:",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 13,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "C6705 RESONANCE DIR DEP PPD ID: 7462283648"
+      ]
+    },
+    {
+      "merchant_norm": "HAWAIIAN AI",
+      "category": "Travel",
+      "subcategory": "Honeymoon",
+      "occurrences": 12,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "HAWAIIAN AI 1734200184646",
+        "HAWAIIAN AI 1732193887120",
+        "HAWAIIAN AI 1732193781203"
+      ]
+    },
+    {
+      "merchant_norm": "NORDRACKCOM8889666283",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 12,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NORDRACKCOM8889666283"
+      ]
+    },
+    {
+      "merchant_norm": "TARGET",
+      "category": "Shopping",
+      "subcategory": "Target",
+      "occurrences": 12,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TARGET"
+      ]
+    },
+    {
+      "merchant_norm": "WWW.CVS.COM",
+      "category": "Health & Wellness",
+      "subcategory": "CVS",
+      "occurrences": 10,
+      "consistency": 0.9,
+      "sample_descriptions": [
+        "WWW.CVS.COM"
+      ]
+    },
+    {
+      "merchant_norm": "LIDO WINES & SPIRITS",
+      "category": "Food & Drink",
+      "subcategory": "Alcohol",
+      "occurrences": 10,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LIDO WINES & SPIRITS"
+      ]
+    },
+    {
+      "merchant_norm": "WWW.SWEETGREEN.COM",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 10,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "WWW.SWEETGREEN.COM"
+      ]
+    },
+    {
+      "merchant_norm": "PHISH TICKETS",
+      "category": "Entertainment",
+      "subcategory": "Concert",
+      "occurrences": 9,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Phish Tickets"
+      ]
+    },
+    {
+      "merchant_norm": "AMERICAN EAGLE OUTFITTERS",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 9,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "American Eagle Outfitters"
+      ]
+    },
+    {
+      "merchant_norm": "BLUEAPRON.COM ORDER",
+      "category": "Groceries",
+      "subcategory": "Other",
+      "occurrences": 9,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "BLUEAPRON.COM* ORDER"
+      ]
+    },
+    {
+      "merchant_norm": "HOLLYWOOD HEALTH CLUB",
+      "category": "Health & Wellness",
+      "subcategory": "Gym",
+      "occurrences": 8,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "HOLLYWOOD HEALTH CLUB"
+      ]
+    },
+    {
+      "merchant_norm": "LEVELUPCHOPTCREATIVES",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 8,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LEVELUPCHOPTCREATIVES"
+      ]
+    },
+    {
+      "merchant_norm": "WONDERLAND SMOKE SHOP",
+      "category": "Health & Wellness",
+      "subcategory": "Juul",
+      "occurrences": 8,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "WONDERLAND SMOKE SHOP"
+      ]
+    },
+    {
+      "merchant_norm": "MOVIEPASS.COM",
+      "category": "Entertainment",
+      "subcategory": "Movies",
+      "occurrences": 8,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MOVIEPASS.COM"
+      ]
+    },
+    {
+      "merchant_norm": "SXMSIRIUSXM.COM/ACCT",
+      "category": "Subscription",
+      "subcategory": "Music",
+      "occurrences": 8,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SXM*SIRIUSXM.COM/ACCT"
+      ]
+    },
+    {
+      "merchant_norm": "TELECHARGE SVCE",
+      "category": "Entertainment",
+      "subcategory": "Broadway",
+      "occurrences": 8,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TELECHARGE SVCE"
+      ]
+    },
+    {
+      "merchant_norm": "MICHAEL GOLDSTEIN",
+      "category": "Bills & Utilities",
+      "subcategory": "Rent",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Michael Goldstein"
+      ]
+    },
+    {
+      "merchant_norm": "DEPOSIT",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "DEPOSIT ID NUMBER 92353",
+        "DEPOSIT",
+        "DEPOSITED"
+      ]
+    },
+    {
+      "merchant_norm": "TARGET CARD SRVC AUTO PYMT WEB ID:",
+      "category": "Shopping",
+      "subcategory": "Target",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TARGET CARD SRVC AUTO PYMT 00063163791  WEB ID: 1411721813",
+        "TARGET CARD SRVC AUTO PYMT 00063163791 WEB ID: 1411721813"
+      ]
+    },
+    {
+      "merchant_norm": "EAST ROCK COFFEE",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "EAST ROCK COFFEE CORP"
+      ]
+    },
+    {
+      "merchant_norm": "LIBERTY MUTUAL PET INS",
+      "category": "Bills & Utilities",
+      "subcategory": "Penny",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LIBERTY MUTUAL PET INS"
+      ]
+    },
+    {
+      "merchant_norm": "STARBUCKS 800-782-7282",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "STARBUCKS 800-782-7282"
+      ]
+    },
+    {
+      "merchant_norm": "FLUFFY ANGEL PET GROOM",
+      "category": "Bills & Utilities",
+      "subcategory": "Penny",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Fluffy Angel Pet Groom"
+      ]
+    },
+    {
+      "merchant_norm": "MARVEL FROZEN DAIRY",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MARVEL FROZEN DAIRY"
+      ]
+    },
+    {
+      "merchant_norm": "USPS PO",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "USPS PO 3548200561"
+      ]
+    },
+    {
+      "merchant_norm": "PAYPAL UBERPAYMENT",
+      "category": "Travel",
+      "subcategory": "Europe",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PAYPAL *UBERPAYMENT"
+      ]
+    },
+    {
+      "merchant_norm": "RATP",
+      "category": "Travel",
+      "subcategory": "Europe",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "RATP"
+      ]
+    },
+    {
+      "merchant_norm": "ECLAT",
+      "category": "Personal",
+      "subcategory": "Europe",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ECLAT"
+      ]
+    },
+    {
+      "merchant_norm": "FIDELITY",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "FIDELITY"
+      ]
+    },
+    {
+      "merchant_norm": "CALAKE2FDI300250",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Payment",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CALAKE2FDI300250"
+      ]
+    },
+    {
+      "merchant_norm": "CLAUDE.AI SUBSCRIPTION",
+      "category": "Subscription",
+      "subcategory": "AI",
+      "occurrences": 7,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CLAUDE.AI SUBSCRIPTION"
+      ]
+    },
+    {
+      "merchant_norm": "ISLAND PARK VALERO",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Gas",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ISLAND PARK VALERO"
+      ]
+    },
+    {
+      "merchant_norm": "ESPN PLUS",
+      "category": "Subscription",
+      "subcategory": "TV",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ESPN Plus"
+      ]
+    },
+    {
+      "merchant_norm": "DUNKIN Q35",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "DUNKIN #347227 Q35",
+        "DUNKIN #340752 Q35",
+        "DUNKIN #340441 Q35"
+      ]
+    },
+    {
+      "merchant_norm": "ONLINE TRANSFER",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Online Transfer from SAV ...1780 transaction#: 17814397353",
+        "Online Transfer to SAV ...1780 transaction#: 19518678763 01/08",
+        "Online Transfer from SAV ...1780 transaction#: 19518687745"
+      ]
+    },
+    {
+      "merchant_norm": "YANKEE STDM CONCESSIONS",
+      "category": "Entertainment",
+      "subcategory": "Concessions",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "YANKEE STDM CONCESSIONS"
+      ]
+    },
+    {
+      "merchant_norm": "WONDERBLY PERSONALIZED",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "WONDERBLY PERSONALIZED"
+      ]
+    },
+    {
+      "merchant_norm": "WWW.ONESIGHT.ORG",
+      "category": "Gifts & Donations",
+      "subcategory": "Donation",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "WWW.ONESIGHT.ORG"
+      ]
+    },
+    {
+      "merchant_norm": "JUST SALAD",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "JUST SALAD"
+      ]
+    },
+    {
+      "merchant_norm": "C6705 RESONANCE DIR DEP",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "C6705 RESONANCE  DIR DEP",
+        "C6705 RESONANCE DIR DEP"
+      ]
+    },
+    {
+      "merchant_norm": "GINOS LONG BEACH",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "GINOS LONG BEACH"
+      ]
+    },
+    {
+      "merchant_norm": "QDIQUEST DIAGNOSTICS",
+      "category": "Health & Wellness",
+      "subcategory": "Appointment",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "QDI*QUEST DIAGNOSTICS"
+      ]
+    },
+    {
+      "merchant_norm": "BLOOMINGDALES GARDEN CIT",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "BLOOMINGDALES  GARDEN CIT",
+        "BLOOMINGDALES GARDEN CIT"
+      ]
+    },
+    {
+      "merchant_norm": "BARCLAYCARD",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "BARCLAYCARD"
+      ]
+    },
+    {
+      "merchant_norm": "THE HERITAGE BAR & REST",
+      "category": "Food & Drink",
+      "subcategory": "Drinks",
+      "occurrences": 6,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "THE HERITAGE BAR & REST"
+      ]
+    },
+    {
+      "merchant_norm": "MSPBNA ACH TRNSFR PPD ID:",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MSPBNA ACH TRNSFR PPD ID: 1391321258"
+      ]
+    },
+    {
+      "merchant_norm": "PINS MECHANICAL CLEVELAN",
+      "category": "Food & Drink",
+      "subcategory": "Drinks",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PINS MECHANICAL CLEVELAN"
+      ]
+    },
+    {
+      "merchant_norm": "RCMH FOOD & MERCH",
+      "category": "Entertainment",
+      "subcategory": "Concert",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "RCMH FOOD & MERCH"
+      ]
+    },
+    {
+      "merchant_norm": "MACYS .COM",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MACYS   .COM"
+      ]
+    },
+    {
+      "merchant_norm": "CHOPT CREATIVE SALAD",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CHOPT CREATIVE SALAD CO"
+      ]
+    },
+    {
+      "merchant_norm": "SEABREEZE GROCERY LONG BEACH",
+      "category": "Health & Wellness",
+      "subcategory": "Juul",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SEABREEZE GROCERY LONG BEACH NY 06/12",
+        "SEABREEZE GROCERY LONG BEACH NY              08/06",
+        "SEABREEZE GROCERY LONG BEACH NY 06/16"
+      ]
+    },
+    {
+      "merchant_norm": "CITI FIELD CONCESSIONS",
+      "category": "Entertainment",
+      "subcategory": "Concessions",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CITI FIELD CONCESSIONS"
+      ]
+    },
+    {
+      "merchant_norm": "BARCLAYCARD US CREDITCARD WEB ID:",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "BARCLAYCARD US CREDITCARD 1115201599 WEB ID: 2510407970",
+        "BARCLAYCARD US CREDITCARD 1125673086 WEB ID: 2510407970",
+        "BARCLAYCARD US CREDITCARD 1059926551 WEB ID: 2510407970"
+      ]
+    },
+    {
+      "merchant_norm": "NYS DOL UI DD UI DD",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NYS DOL UI DD    UI DD"
+      ]
+    },
+    {
+      "merchant_norm": "LUXOTTICA RETAIL DIRECT DEP",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LUXOTTICA RETAIL DIRECT DEP"
+      ]
+    },
+    {
+      "merchant_norm": "BLUEAPRON ORDER",
+      "category": "Groceries",
+      "subcategory": "Other",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "BLUEAPRON* ORDER"
+      ]
+    },
+    {
+      "merchant_norm": "ROCKVILLE CENTRE PARKING",
+      "category": "Bills & Utilities",
+      "subcategory": "Misc.",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ROCKVILLE CENTRE PARKING"
+      ]
+    },
+    {
+      "merchant_norm": "BAGEL BOSS - CARLE PLACE",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "BAGEL BOSS - CARLE PLACE"
+      ]
+    },
+    {
+      "merchant_norm": "UBR PENDING.UBER.COM",
+      "category": "Travel",
+      "subcategory": "Europe",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "UBR* PENDING.UBER.COM"
+      ]
+    },
+    {
+      "merchant_norm": "PARC OL SXO 4252595",
+      "category": "Food & Drink",
+      "subcategory": "Europe",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PARC OL SXO 4252595",
+        "PARC OL SXO     4252595"
+      ]
+    },
+    {
+      "merchant_norm": "CAFE1001",
+      "category": "Food & Drink",
+      "subcategory": "Europe",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Cafe1001"
+      ]
+    },
+    {
+      "merchant_norm": "LEGENDS@YANKEE STDM-CO",
+      "category": "Entertainment",
+      "subcategory": "Concessions",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LEGENDS@YANKEE STDM-CO"
+      ]
+    },
+    {
+      "merchant_norm": "NATERA",
+      "category": "Health & Wellness",
+      "subcategory": "Appointment",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NATERA"
+      ]
+    },
+    {
+      "merchant_norm": "NYU PHYSICIAN SERVICES",
+      "category": "Health & Wellness",
+      "subcategory": "Appointment",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NYU PHYSICIAN SERVICES"
+      ]
+    },
+    {
+      "merchant_norm": "NESPRESSO USA",
+      "category": "Groceries",
+      "subcategory": "Coffee",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NESPRESSO USA INC"
+      ]
+    },
+    {
+      "merchant_norm": "UBER EATS",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 5,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "UBER   *EATS"
+      ]
+    },
+    {
+      "merchant_norm": "PSEG",
+      "category": "Bills & Utilities",
+      "subcategory": "Electricity",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PSEG"
+      ]
+    },
+    {
+      "merchant_norm": "DELTA AIR",
+      "category": "Travel",
+      "subcategory": "Flight",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "DELTA AIR 0062357254217",
+        "DELTA AIR   0060204035032",
+        "DELTA AIR   0062140388682"
+      ]
+    },
+    {
+      "merchant_norm": "JETBLUE",
+      "category": "Travel",
+      "subcategory": "Flight",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "JETBLUE     2792133300066",
+        "JETBLUE     2792130959289",
+        "JETBLUE 2792112526058"
+      ]
+    },
+    {
+      "merchant_norm": "ABERCROMBIE & FITCH",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ABERCROMBIE & FITCH"
+      ]
+    },
+    {
+      "merchant_norm": "SUNOCO",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Gas",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SUNOCO 0368295201",
+        "SUNOCO 8002145301",
+        "SUNOCO 8002265401"
+      ]
+    },
+    {
+      "merchant_norm": "OPTUMRX",
+      "category": "Health & Wellness",
+      "subcategory": "Prescription",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "OPTUMRX"
+      ]
+    },
+    {
+      "merchant_norm": "HAIRSTORY",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Hairstory"
+      ]
+    },
+    {
+      "merchant_norm": "ISLAND PARK LUBE",
+      "category": "Bills & Utilities",
+      "subcategory": "Misc.",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ISLAND PARK LUBE"
+      ]
+    },
+    {
+      "merchant_norm": "POTTERYBARNKIDS.COM",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "POTTERYBARNKIDS.COM"
+      ]
+    },
+    {
+      "merchant_norm": "PAYMENT THANK YOU-MOBILE",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Payment Thank You-Mobile"
+      ]
+    },
+    {
+      "merchant_norm": "UNITED",
+      "category": "Travel",
+      "subcategory": "Flight",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "UNITED 0162476510733",
+        "UNITED 0162476510734",
+        "UNITED 0162476510735"
+      ]
+    },
+    {
+      "merchant_norm": "ABC HAWAII",
+      "category": "Shopping",
+      "subcategory": "Honeymoon",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ABC #14 HAWAII",
+        "ABC #39 HAWAII",
+        "ABC #23 HAWAII"
+      ]
+    },
+    {
+      "merchant_norm": "FANDANGO",
+      "category": "Entertainment",
+      "subcategory": "Movies",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "FANDANGO",
+        "FANDANGO *"
+      ]
+    },
+    {
+      "merchant_norm": "TICKETMASTER",
+      "category": "Entertainment",
+      "subcategory": "Concert",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Ticketmaster",
+        "TICKETMASTER"
+      ]
+    },
+    {
+      "merchant_norm": "MSG CONCESSIONS NEW YORK",
+      "category": "Entertainment",
+      "subcategory": "Concessions",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MSG CONCESSIONS NEW YORK NY 07/29",
+        "MSG CONCESSIONS NEW YORK NY                  08/02",
+        "MSG CONCESSIONS NEW YORK NY 07/30"
+      ]
+    },
+    {
+      "merchant_norm": "IC COSTCO BY INSTACAR",
+      "category": "Groceries",
+      "subcategory": "Costco",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "IC* COSTCO BY INSTACAR"
+      ]
+    },
+    {
+      "merchant_norm": "BARCLAYCARD US CREDITCARD",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "BARCLAYCARD US   CREDITCARD 1027796554",
+        "BARCLAYCARD US  CREDITCARD",
+        "BARCLAYCARD US   CREDITCARD 1048953947"
+      ]
+    },
+    {
+      "merchant_norm": "CRATE&BARREL CB2 NOD",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CRATE&BARREL CB2 NOD"
+      ]
+    },
+    {
+      "merchant_norm": "STUBHUB",
+      "category": "Entertainment",
+      "subcategory": "Concert",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "StubHub",
+        "STUBHUB INC"
+      ]
+    },
+    {
+      "merchant_norm": "AXS.COMFOREST HILLS",
+      "category": "Entertainment",
+      "subcategory": "Concert",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "AXS.COMFOREST HILLS"
+      ]
+    },
+    {
+      "merchant_norm": "JFK T5 FOOD COURT",
+      "category": "Travel",
+      "subcategory": "Food",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "JFK T5 FOOD COURT"
+      ]
+    },
+    {
+      "merchant_norm": "TOAST CAFE",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TOAST CAFE"
+      ]
+    },
+    {
+      "merchant_norm": "STAPLES 00115378",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "STAPLES       00115378",
+        "STAPLES 00115378"
+      ]
+    },
+    {
+      "merchant_norm": "ROSE PIZZA",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ROSE PIZZA"
+      ]
+    },
+    {
+      "merchant_norm": "PANERA BREAD P",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PANERA BREAD #609367 P",
+        "PANERA BREAD #204064 P"
+      ]
+    },
+    {
+      "merchant_norm": "SCHWEIGER DERMATOLOGY",
+      "category": "Health & Wellness",
+      "subcategory": "Appointment",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "Schweiger Dermatology"
+      ]
+    },
+    {
+      "merchant_norm": "JOBTEST.ORG (REALIGN)",
+      "category": "Subscription",
+      "subcategory": "Career Coach",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "JOBTEST.ORG (REALIGN)"
+      ]
+    },
+    {
+      "merchant_norm": "FAMILY 99C PLUS",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 4,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "FAMILY 99C PLUS"
+      ]
+    },
+    {
+      "merchant_norm": "GRUBHUB",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "GRUBHUB*YUMMYGYRO",
+        "GRUBHUBWILDFIG",
+        "GRUBHUBLIDOKOSHERDELI"
+      ]
+    },
+    {
+      "merchant_norm": "PAYPAL INST XFER STITCHFIXIN WEB ID: PAYPALSI77",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PAYPAL INST XFER STITCHFIXIN WEB ID: PAYPALSI77"
+      ]
+    },
+    {
+      "merchant_norm": "ALL CREATURES VETERINA",
+      "category": "Bills & Utilities",
+      "subcategory": "Penny",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ALL CREATURES VETERINA"
+      ]
+    },
+    {
+      "merchant_norm": "CHEWY.COM",
+      "category": "Bills & Utilities",
+      "subcategory": "Penny",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CHEWY.COM"
+      ]
+    },
+    {
+      "merchant_norm": "JIMMY HAYS STEAKHOUSE",
+      "category": "Food & Drink",
+      "subcategory": "Restaurant",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "JIMMY HAYS STEAKHOUSE"
+      ]
+    },
+    {
+      "merchant_norm": "CASH ADVANCE INTEREST CHA",
+      "category": "Fees & Adjustments",
+      "subcategory": "Fees & Adjustments",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CASH ADVANCE INTEREST CHA"
+      ]
+    },
+    {
+      "merchant_norm": "LONG BEACH CINEMA 4",
+      "category": "Entertainment",
+      "subcategory": "Movies",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LONG BEACH CINEMA 4"
+      ]
+    },
+    {
+      "merchant_norm": "POKE BOWL",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "POKE BOWL"
+      ]
+    },
+    {
+      "merchant_norm": "SHEIN.COM",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SHEIN.COM"
+      ]
+    },
+    {
+      "merchant_norm": "1-800-FLOWERS.COM INC.",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "1-800-FLOWERS.COM INC."
+      ]
+    },
+    {
+      "merchant_norm": "CHELSEA CONVENIENCE VIBEZ",
+      "category": "Health & Wellness",
+      "subcategory": "Juul",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CHELSEA CONVENIENCE VIBEZ"
+      ]
+    },
+    {
+      "merchant_norm": "PARAMOUNT+",
+      "category": "Subscription",
+      "subcategory": "TV",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PARAMOUNT+"
+      ]
+    },
+    {
+      "merchant_norm": "TRUSPAY.CC",
+      "category": "Subscription",
+      "subcategory": "iCloud",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TRUSPAY.CC"
+      ]
+    },
+    {
+      "merchant_norm": "MONTHLY SERVICE FEE",
+      "category": "Fees & Adjustments",
+      "subcategory": "Fees & Adjustments",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MONTHLY SERVICE FEE"
+      ]
+    },
+    {
+      "merchant_norm": "NON-CHASE ATM FEE-WITH",
+      "category": "Fees & Adjustments",
+      "subcategory": "Fees & Adjustments",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NON-CHASE ATM FEE-WITH"
+      ]
+    },
+    {
+      "merchant_norm": "HYATT REGENCY WAIKIKI F/",
+      "category": "Food & Drink",
+      "subcategory": "Honeymoon",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "HYATT REGENCY WAIKIKI F/"
+      ]
+    },
+    {
+      "merchant_norm": "MSKGIVING 855 718 4054",
+      "category": "Gifts & Donations",
+      "subcategory": "Donation",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "MSKGIVING 855 718 4054"
+      ]
+    },
+    {
+      "merchant_norm": "PAIA BAY COFFEE BAR",
+      "category": "Food & Drink",
+      "subcategory": "Honeymoon",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PAIA BAY COFFEE BAR"
+      ]
+    },
+    {
+      "merchant_norm": "ACCENTS",
+      "category": "Shopping",
+      "subcategory": "Honeymoon",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ACCENTS #1490"
+      ]
+    },
+    {
+      "merchant_norm": "GFTSHPMARRIOTTWAIOHAIBEAC",
+      "category": "Shopping",
+      "subcategory": "Honeymoon",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "GFTSHPMARRIOTTWAIOHAIBEAC"
+      ]
+    },
+    {
+      "merchant_norm": "PK SMOKE SHOP & CARD STOR",
+      "category": "Health & Wellness",
+      "subcategory": "Juul",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "PK SMOKE SHOP & CARD STOR"
+      ]
+    },
+    {
+      "merchant_norm": "METLIFE CONCESSIONS",
+      "category": "Entertainment",
+      "subcategory": "Concessions",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "METLIFE CONCESSIONS"
+      ]
+    },
+    {
+      "merchant_norm": "GEICO PREM COLL",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Insurance",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "GEICO PREM COLL",
+        "GEICO            PREM COLL"
+      ]
+    },
+    {
+      "merchant_norm": "CALAKE2FDI300250 WEB PAY CALAUTO",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Payment",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CALAKE2FDI300250 WEB PAY    CALAUTO",
+        "CALAKE2FDI300250 WEB PAY CALAUTO"
+      ]
+    },
+    {
+      "merchant_norm": "AGIRENTERS/CONDO INS",
+      "category": "Bills & Utilities",
+      "subcategory": "Other Insurance",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "AGI*RENTERS/CONDO INS"
+      ]
+    },
+    {
+      "merchant_norm": "HUDSON ST216",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "HUDSON ST216"
+      ]
+    },
+    {
+      "merchant_norm": "RECOVERY BAR",
+      "category": "Reimbursed",
+      "subcategory": "Andrew Work",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "RECOVERY BAR"
+      ]
+    },
+    {
+      "merchant_norm": "7BARCLAYS CTRB",
+      "category": "Entertainment",
+      "subcategory": "Concessions",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "7BARCLAYS CTRB"
+      ]
+    },
+    {
+      "merchant_norm": "WEGMANS",
+      "category": "Travel",
+      "subcategory": "Food",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "WEGMANS #090"
+      ]
+    },
+    {
+      "merchant_norm": "TM VAMPIRE WEEKEND",
+      "category": "Entertainment",
+      "subcategory": "Concert",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TM *VAMPIRE WEEKEND"
+      ]
+    },
+    {
+      "merchant_norm": "COUNTRY BOY BAKERY",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "COUNTRY BOY BAKERY"
+      ]
+    },
+    {
+      "merchant_norm": "HM.COM",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "HM.COM"
+      ]
+    },
+    {
+      "merchant_norm": "CHENS POKE",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "CHENS POKE INC"
+      ]
+    },
+    {
+      "merchant_norm": "SAINSBURYS S/MKTS",
+      "category": "Groceries",
+      "subcategory": "Europe",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SAINSBURYS S/MKTS"
+      ]
+    },
+    {
+      "merchant_norm": "SC-BENALI AHME",
+      "category": "Groceries",
+      "subcategory": "Europe",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SC-BENALI AHME"
+      ]
+    },
+    {
+      "merchant_norm": "TFL TRAVEL CH",
+      "category": "Travel",
+      "subcategory": "Europe",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "TFL TRAVEL CH"
+      ]
+    },
+    {
+      "merchant_norm": "LYNBROOK VILLAGE",
+      "category": "Bills & Utilities",
+      "subcategory": "Misc.",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "LYNBROOK VILLAGE"
+      ]
+    },
+    {
+      "merchant_norm": "EB BABY UNIVERSITY CH",
+      "category": "Baby",
+      "subcategory": "Health & Wellness",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "EB BABY UNIVERSITY CH",
+        "EB *BABY UNIVERSITY CH"
+      ]
+    },
+    {
+      "merchant_norm": "SQUARE CARE",
+      "category": "Health & Wellness",
+      "subcategory": "Appointment",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "SQUARE CARE LLC"
+      ]
+    },
+    {
+      "merchant_norm": "THEPICNICB THE PICNIC",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "THEPICNICB* THE PICNIC"
+      ]
+    },
+    {
+      "merchant_norm": "ALLIED PHYSICIANS GROUP T",
+      "category": "Baby",
+      "subcategory": "Health & Wellness",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ALLIED PHYSICIANS GROUP T"
+      ]
+    },
+    {
+      "merchant_norm": "NYCDOT PARKING METERS",
+      "category": "Travel",
+      "subcategory": "Parking",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "NYCDOT PARKING METERS"
+      ]
+    },
+    {
+      "merchant_norm": "76 - ROSLYN DAKER FOOD",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Gas",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "76 - ROSLYN DAKER FOOD"
+      ]
+    },
+    {
+      "merchant_norm": "ASSOCIATED",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Payment",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "ASSOCIATED"
+      ]
+    },
+    {
+      "merchant_norm": "OLDNAVY.COM",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 3,
+      "consistency": 1.0,
+      "sample_descriptions": [
+        "OLDNAVY.COM"
+      ]
+    }
+  ],
+  "medium_confidence_rules": [
+    {
+      "merchant_norm": "DOORDASH",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 82,
+      "consistency": 0.8780487804878049,
+      "sample_descriptions": [
+        "DD DOORDASH CENTRETHA",
+        "DOORDASH*GREEK COVE",
+        "DD DOORDASH PASTA-ERI"
+      ]
+    },
+    {
+      "merchant_norm": "VENMO OUTGOING",
+      "category": "Venmo",
+      "subcategory": "Venmo",
+      "occurrences": 79,
+      "consistency": 0.7848101265822784,
+      "sample_descriptions": [
+        "VENMO PAYMENT 1025231080167 WEB ID: 3264681992",
+        "VENMO PAYMENT 1027087042035 WEB ID: 3264681992",
+        "VENMO PAYMENT 1034699921464 WEB ID: 3264681992"
+      ]
+    },
+    {
+      "merchant_norm": "UBER",
+      "category": "Travel",
+      "subcategory": "Uber/Lyft",
+      "occurrences": 44,
+      "consistency": 0.8409090909090909,
+      "sample_descriptions": [
+        "UBER *TRIP",
+        "UBER   TRIP",
+        "UBER"
+      ]
+    },
+    {
+      "merchant_norm": "NORDSTROM DIRECT",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 22,
+      "consistency": 0.8181818181818182,
+      "sample_descriptions": [
+        "NORDSTROM DIRECT #0808"
+      ]
+    },
+    {
+      "merchant_norm": "WALGREENS",
+      "category": "Health & Wellness",
+      "subcategory": "CVS",
+      "occurrences": 22,
+      "consistency": 0.8636363636363636,
+      "sample_descriptions": [
+        "WALGREENS #15127",
+        "WALGREENS #10728",
+        "WALGREENS #10278"
+      ]
+    },
+    {
+      "merchant_norm": "ZELLE FROM",
+      "category": "Venmo",
+      "subcategory": "Venmo",
+      "occurrences": 17,
+      "consistency": 0.7647058823529411,
+      "sample_descriptions": [
+        "Zelle payment from DEMETRIUS M SUAZO 16525087757",
+        "Zelle payment from ANDREW DIENSTAG 16583127408",
+        "Zelle payment from ROSE ALYSSA BLOOMBERG 16684381763"
+      ]
+    },
+    {
+      "merchant_norm": "OLD NAVY ON-LINE",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 16,
+      "consistency": 0.875,
+      "sample_descriptions": [
+        "OLD NAVY ON-LINE"
+      ]
+    },
+    {
+      "merchant_norm": "ATM",
+      "category": "Fees & Adjustments",
+      "subcategory": "Withdrawal",
+      "occurrences": 14,
+      "consistency": 0.7142857142857143,
+      "sample_descriptions": [
+        "ATM"
+      ]
+    },
+    {
+      "merchant_norm": "E-ZPASS",
+      "category": "Travel",
+      "subcategory": "E-ZPass",
+      "occurrences": 14,
+      "consistency": 0.8571428571428571,
+      "sample_descriptions": [
+        "E-ZPASS"
+      ]
+    },
+    {
+      "merchant_norm": "SHELL",
+      "category": "Bills & Utilities",
+      "subcategory": "Car Gas",
+      "occurrences": 12,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "SHELL OIL13182532013",
+        "SHELL OIL 10013957005",
+        "SHELL OIL13090319016"
+      ]
+    },
+    {
+      "merchant_norm": "MONARCH BEVERAGE",
+      "category": "Food & Drink",
+      "subcategory": "Alcohol",
+      "occurrences": 11,
+      "consistency": 0.8181818181818182,
+      "sample_descriptions": [
+        "MONARCH BEVERAGE"
+      ]
+    },
+    {
+      "merchant_norm": "BRIXX & BARLEY",
+      "category": "Food & Drink",
+      "subcategory": "Restaurant",
+      "occurrences": 10,
+      "consistency": 0.8,
+      "sample_descriptions": [
+        "BRIXX & BARLEY"
+      ]
+    },
+    {
+      "merchant_norm": "ZELLE TO",
+      "category": "Venmo",
+      "subcategory": "Venmo",
+      "occurrences": 10,
+      "consistency": 0.8,
+      "sample_descriptions": [
+        "Zelle payment to AMANDA 16604618704",
+        "Zelle payment to AMANDA 16894114796",
+        "Zelle payment to Andrew 18608700617"
+      ]
+    },
+    {
+      "merchant_norm": "CHECK PAYMENT",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 9,
+      "consistency": 0.8888888888888888,
+      "sample_descriptions": [
+        "CHECK 182",
+        "CHECK 179",
+        "CHECK 171"
+      ]
+    },
+    {
+      "merchant_norm": "SODASTREAM USA",
+      "category": "Groceries",
+      "subcategory": "Other",
+      "occurrences": 8,
+      "consistency": 0.875,
+      "sample_descriptions": [
+        "SODASTREAM USA INC"
+      ]
+    },
+    {
+      "merchant_norm": "FAMILY 99C & PLUS",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 8,
+      "consistency": 0.875,
+      "sample_descriptions": [
+        "FAMILY 99C & PLUS"
+      ]
+    },
+    {
+      "merchant_norm": "LIDO KOSHER DELI",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 8,
+      "consistency": 0.875,
+      "sample_descriptions": [
+        "LIDO KOSHER DELI"
+      ]
+    },
+    {
+      "merchant_norm": "DUNKIN",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 8,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "DUNKIN #336890",
+        "DUNKIN #308520",
+        "DUNKIN #363004"
+      ]
+    },
+    {
+      "merchant_norm": "CARTER'S",
+      "category": "Baby",
+      "subcategory": "Clothes",
+      "occurrences": 8,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "CARTER'S #1209"
+      ]
+    },
+    {
+      "merchant_norm": "BED BATH & BEYOND",
+      "category": "Shopping",
+      "subcategory": "Home",
+      "occurrences": 7,
+      "consistency": 0.7142857142857143,
+      "sample_descriptions": [
+        "BED BATH & BEYOND #507",
+        "BED BATH & BEYOND",
+        "BED BATH & BEYOND #651"
+      ]
+    },
+    {
+      "merchant_norm": "ANNUAL MEMBERSHIP FEE",
+      "category": "Fees & Adjustments",
+      "subcategory": "Fees & Adjustments",
+      "occurrences": 7,
+      "consistency": 0.7142857142857143,
+      "sample_descriptions": [
+        "ANNUAL MEMBERSHIP FEE"
+      ]
+    },
+    {
+      "merchant_norm": "PRIMO CAPPUCCINO",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 7,
+      "consistency": 0.7142857142857143,
+      "sample_descriptions": [
+        "PRIMO CAPPUCCINO"
+      ]
+    },
+    {
+      "merchant_norm": "INSTACART CREDIT",
+      "category": "Fees & Adjustments",
+      "subcategory": "Fees & Adjustments",
+      "occurrences": 7,
+      "consistency": 0.7142857142857143,
+      "sample_descriptions": [
+        "INSTACART CREDIT"
+      ]
+    },
+    {
+      "merchant_norm": "BRIXXANDBARLEY.COM",
+      "category": "Food & Drink",
+      "subcategory": "Restaurant",
+      "occurrences": 5,
+      "consistency": 0.8,
+      "sample_descriptions": [
+        "BRIXXANDBARLEY.COM"
+      ]
+    },
+    {
+      "merchant_norm": "CHELSEAS SIGNATURE DELI",
+      "category": "Health & Wellness",
+      "subcategory": "Juul",
+      "occurrences": 5,
+      "consistency": 0.8,
+      "sample_descriptions": [
+        "CHELSEAS SIGNATURE DELI"
+      ]
+    },
+    {
+      "merchant_norm": "PARK AVENUE WINE SHOP",
+      "category": "Food & Drink",
+      "subcategory": "Alcohol",
+      "occurrences": 5,
+      "consistency": 0.8,
+      "sample_descriptions": [
+        "PARK AVENUE WINE SHOP"
+      ]
+    },
+    {
+      "merchant_norm": "IC INSTACART",
+      "category": "Groceries",
+      "subcategory": "Other",
+      "occurrences": 4,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "IC* INSTACART"
+      ]
+    },
+    {
+      "merchant_norm": "F & S METRO NEWS",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 4,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "F & S METRO NEWS"
+      ]
+    },
+    {
+      "merchant_norm": "FLIP SHOP",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 4,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "FLIP SHOP"
+      ]
+    },
+    {
+      "merchant_norm": "STARBUCKS",
+      "category": "Food & Drink",
+      "subcategory": "Coffee",
+      "occurrences": 4,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "STARBUCKS 8007827282",
+        "STARBUCKS"
+      ]
+    },
+    {
+      "merchant_norm": "ZELLE- JSK PHOTOGRAPHY",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 4,
+      "consistency": 0.75,
+      "sample_descriptions": [
+        "Zelle- JSK Photography"
+      ]
+    }
+  ],
+  "conflicts": [
+    {
+      "merchant_norm": "SQ",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 266,
+      "consistency": 0.24812030075187969,
+      "sample_descriptions": [
+        "SQ *AUNTY SANDYS BANANA B",
+        "SQ *A",
+        "SQ *DARK HORSE COFFEE KAU"
+      ],
+      "all_categories": [
+        "Food & Drink\u2192Fast Casual (66)",
+        "Food & Drink\u2192Coffee (59)",
+        "Entertainment\u2192Concessions (50)",
+        "Gifts & Donations\u2192Donation (22)",
+        "Health & Wellness\u2192Therapy (15)",
+        "Food & Drink\u2192Drinks (12)",
+        "Shopping\u2192Self Care (11)",
+        "Food & Drink\u2192Honeymoon (7)",
+        "Food & Drink\u2192Restaurant (6)",
+        "Entertainment\u2192Concert (6)",
+        "Food & Drink\u2192Europe (4)",
+        "Travel\u2192Food (3)",
+        "Gifts & Donations\u2192Gift (1)",
+        "Health & Wellness\u2192Juul (1)",
+        "Shopping\u2192Misc. (1)",
+        "Bills & Utilities\u2192Penny (1)",
+        "Shopping\u2192 (1)"
+      ]
+    },
+    {
+      "merchant_norm": "TST",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 159,
+      "consistency": 0.5534591194968553,
+      "sample_descriptions": [
+        "TST* THE STAG'S HEAD",
+        "TST* USA BROOKLYN DELICAT",
+        "TST* TALEA BEER CO."
+      ],
+      "all_categories": [
+        "Food & Drink\u2192Fast Casual (88)",
+        "Food & Drink\u2192Restaurant (36)",
+        "Food & Drink\u2192Honeymoon (12)",
+        "Food & Drink\u2192Drinks (9)",
+        "Travel\u2192Food (8)",
+        "Food & Drink\u2192Coffee (5)",
+        "Food & Drink\u2192Misc. (1)"
+      ]
+    },
+    {
+      "merchant_norm": "ZELLE",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 75,
+      "consistency": 0.5333333333333333,
+      "sample_descriptions": [
+        "Zelle"
+      ],
+      "all_categories": [
+        "Payment\u2192Payment (40)",
+        "Baby\u2192Daycare (27)",
+        "Venmo\u2192Venmo (8)"
+      ]
+    },
+    {
+      "merchant_norm": "REMOTE DEPOSIT",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 36,
+      "consistency": 0.5833333333333334,
+      "sample_descriptions": [
+        "REMOTE ONLINE DEPOSIT # 1"
+      ],
+      "all_categories": [
+        "Payment\u2192Payment (21)",
+        "Gifts & Donations\u2192Gift (14)",
+        "Venmo\u2192Venmo (1)"
+      ]
+    },
+    {
+      "merchant_norm": "SP",
+      "category": "Groceries",
+      "subcategory": "Other",
+      "occurrences": 26,
+      "consistency": 0.23076923076923078,
+      "sample_descriptions": [
+        "SP COMMONWEALTH RUN",
+        "SP THE WOOBLES",
+        "SP WWW.47BRAND.COM"
+      ],
+      "all_categories": [
+        "Groceries\u2192Other (6)",
+        "Shopping\u2192Clothes (5)",
+        "Shopping\u2192Misc. (4)",
+        "Gifts & Donations\u2192Gift (2)",
+        "Baby\u2192Shopping (2)",
+        "Food & Drink\u2192Coffee (1)",
+        "Entertainment\u2192Concert (1)",
+        "Subscription\u2192Music (1)",
+        "Bills & Utilities\u2192Car Insurance (1)",
+        "Food & Drink\u2192Drinks (1)",
+        "Baby\u2192Clothes (1)",
+        "Entertainment\u2192Races (1)"
+      ]
+    },
+    {
+      "merchant_norm": "BUNGALOW GRILL",
+      "category": "Food & Drink",
+      "subcategory": "Restaurant",
+      "occurrences": 25,
+      "consistency": 0.68,
+      "sample_descriptions": [
+        "BUNGALOW GRILL"
+      ],
+      "all_categories": [
+        "Food & Drink\u2192Restaurant (17)",
+        "Food & Drink\u2192Fast Casual (8)"
+      ]
+    },
+    {
+      "merchant_norm": "PAYPAL TRANSFER PPD ID: PAYPALSD11",
+      "category": "Shopping",
+      "subcategory": "Misc.",
+      "occurrences": 20,
+      "consistency": 0.55,
+      "sample_descriptions": [
+        "PAYPAL TRANSFER PPD ID: PAYPALSD11",
+        "PAYPAL           TRANSFER                   PPD ID: PAYPALSD11",
+        "PAYPAL  TRANSFER  PPD ID: PAYPALSD11"
+      ],
+      "all_categories": [
+        "Shopping\u2192Misc. (11)",
+        "Entertainment\u2192Concert (5)",
+        "Venmo\u2192Venmo (2)",
+        "Shopping\u2192Amazon (1)",
+        "Payment\u2192Payment (1)"
+      ]
+    },
+    {
+      "merchant_norm": "BLOOMINGDALES .COM",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 14,
+      "consistency": 0.6428571428571429,
+      "sample_descriptions": [
+        "BLOOMINGDALES .COM",
+        "BLOOMINGDALES  .COM"
+      ],
+      "all_categories": [
+        "Shopping\u2192Clothes (9)",
+        "Gifts & Donations\u2192Gift (3)",
+        "Baby\u2192Clothes (2)"
+      ]
+    },
+    {
+      "merchant_norm": "ETSY INC.",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 13,
+      "consistency": 0.6923076923076923,
+      "sample_descriptions": [
+        "ETSY INC.",
+        "ETSY  INC."
+      ],
+      "all_categories": [
+        "Gifts & Donations\u2192Gift (9)",
+        "Entertainment\u2192Group (2)",
+        "Shopping\u2192Clothes (2)"
+      ]
+    },
+    {
+      "merchant_norm": "TJMAXX",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 12,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "TJMAXX #0747"
+      ],
+      "all_categories": [
+        "Shopping\u2192Clothes (8)",
+        "Shopping\u2192Misc. (2)",
+        "Shopping\u2192Home (2)"
+      ]
+    },
+    {
+      "merchant_norm": "TEMU.COM",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 11,
+      "consistency": 0.6363636363636364,
+      "sample_descriptions": [
+        "TEMU.COM",
+        "Temu.com"
+      ],
+      "all_categories": [
+        "Shopping\u2192Clothes (7)",
+        "Shopping\u2192Misc. (4)"
+      ]
+    },
+    {
+      "merchant_norm": "NEW YORK ROAD RUNNERS",
+      "category": "Entertainment",
+      "subcategory": "Races",
+      "occurrences": 8,
+      "consistency": 0.625,
+      "sample_descriptions": [
+        "NEW YORK ROAD RUNNERS"
+      ],
+      "all_categories": [
+        "Entertainment\u2192Races (5)",
+        "Gifts & Donations\u2192Donation (2)",
+        "Shopping\u2192Misc. (1)"
+      ]
+    },
+    {
+      "merchant_norm": "LIJMC PARKING GARAGE",
+      "category": "Travel",
+      "subcategory": "Parking",
+      "occurrences": 8,
+      "consistency": 0.625,
+      "sample_descriptions": [
+        "LIJMC PARKING GARAGE"
+      ],
+      "all_categories": [
+        "Travel\u2192Parking (5)",
+        "Baby\u2192Health & Wellness (3)"
+      ]
+    },
+    {
+      "merchant_norm": "ELITEFEATS",
+      "category": "Gifts & Donations",
+      "subcategory": "Donation",
+      "occurrences": 7,
+      "consistency": 0.42857142857142855,
+      "sample_descriptions": [
+        "ELITEFEATS"
+      ],
+      "all_categories": [
+        "Gifts & Donations\u2192Donation (3)",
+        "Entertainment\u2192Concert (1)",
+        "Reimbursed\u2192Andrew Work (1)",
+        "Health & Wellness\u2192Gym (1)",
+        "Entertainment\u2192Races (1)"
+      ]
+    },
+    {
+      "merchant_norm": "DUANE READE",
+      "category": "Health & Wellness",
+      "subcategory": "CVS",
+      "occurrences": 6,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "DUANE READE #14206",
+        "DUANE READE #21350",
+        "DUANE READE #21261"
+      ],
+      "all_categories": [
+        "Health & Wellness\u2192CVS (4)",
+        "Food & Drink\u2192Fast Casual (2)"
+      ]
+    },
+    {
+      "merchant_norm": "AMC 2144 ROOSELVELT FL",
+      "category": "Entertainment",
+      "subcategory": "Movies",
+      "occurrences": 6,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "AMC 2144 ROOSELVELT FL"
+      ],
+      "all_categories": [
+        "Entertainment\u2192Movies (4)",
+        "Entertainment\u2192Concessions (1)",
+        "Gifts & Donations\u2192Gift (1)"
+      ]
+    },
+    {
+      "merchant_norm": "JFK T5 FC H AND H BAGELS",
+      "category": "Travel",
+      "subcategory": "Food",
+      "occurrences": 6,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "JFK T5 FC H AND H BAGELS"
+      ],
+      "all_categories": [
+        "Travel\u2192Food (4)",
+        "Reimbursed\u2192Andrew Work (1)",
+        "Food & Drink\u2192Fast Casual (1)"
+      ]
+    },
+    {
+      "merchant_norm": "CHECK",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 6,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "CHECK"
+      ],
+      "all_categories": [
+        "Gifts & Donations\u2192Gift (4)",
+        "Payment\u2192Payment (2)"
+      ]
+    },
+    {
+      "merchant_norm": "CL CHASE TRAVEL",
+      "category": "Travel",
+      "subcategory": "Honeymoon",
+      "occurrences": 5,
+      "consistency": 0.6,
+      "sample_descriptions": [
+        "CL *Chase Travel"
+      ],
+      "all_categories": [
+        "Travel\u2192Honeymoon (3)",
+        "Travel\u2192Flight (1)",
+        "Travel\u2192Stay (1)"
+      ]
+    },
+    {
+      "merchant_norm": "MARSHALLS",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 5,
+      "consistency": 0.6,
+      "sample_descriptions": [
+        "MARSHALLS #0756",
+        "MARSHALLS # 1089"
+      ],
+      "all_categories": [
+        "Shopping\u2192Clothes (3)",
+        "Shopping\u2192Home (1)",
+        "Shopping\u2192Gift (1)"
+      ]
+    },
+    {
+      "merchant_norm": "WWW.KOHLS.COM",
+      "category": "Baby",
+      "subcategory": "Clothes",
+      "occurrences": 5,
+      "consistency": 0.6,
+      "sample_descriptions": [
+        "WWW.KOHLS.COM #0873"
+      ],
+      "all_categories": [
+        "Baby\u2192Clothes (3)",
+        "Baby\u2192Shopping (1)",
+        "Shopping\u2192Clothes (1)"
+      ]
+    },
+    {
+      "merchant_norm": "NORTHWELL HEALTH ONLINE P",
+      "category": "Baby",
+      "subcategory": "Health & Wellness",
+      "occurrences": 5,
+      "consistency": 0.6,
+      "sample_descriptions": [
+        "NORTHWELL HEALTH ONLINE P"
+      ],
+      "all_categories": [
+        "Baby\u2192Health & Wellness (3)",
+        "Health & Wellness\u2192Appointment (2)"
+      ]
+    },
+    {
+      "merchant_norm": "VIVO PHARMACY AT LIJ",
+      "category": "Baby",
+      "subcategory": "Health & Wellness",
+      "occurrences": 5,
+      "consistency": 0.6,
+      "sample_descriptions": [
+        "VIVO PHARMACY AT LIJ"
+      ],
+      "all_categories": [
+        "Baby\u2192Health & Wellness (3)",
+        "Baby\u2192Health (2)"
+      ]
+    },
+    {
+      "merchant_norm": "ALLIANZ TRAVEL INS",
+      "category": "Bills & Utilities",
+      "subcategory": "Other Insurance",
+      "occurrences": 4,
+      "consistency": 0.5,
+      "sample_descriptions": [
+        "ALLIANZ TRAVEL INS"
+      ],
+      "all_categories": [
+        "Bills & Utilities\u2192Other Insurance (2)",
+        "Travel\u2192Honeymoon (2)"
+      ]
+    },
+    {
+      "merchant_norm": "CHATGPT SUBSCRIPTION",
+      "category": "Reimbursed",
+      "subcategory": "Andrew Work",
+      "occurrences": 4,
+      "consistency": 0.5,
+      "sample_descriptions": [
+        "CHATGPT SUBSCRIPTION"
+      ],
+      "all_categories": [
+        "Reimbursed\u2192Andrew Work (2)",
+        "Shopping\u2192Misc. (2)"
+      ]
+    },
+    {
+      "merchant_norm": "PAYPAL",
+      "category": "Payment",
+      "subcategory": "Payment",
+      "occurrences": 4,
+      "consistency": 0.5,
+      "sample_descriptions": [
+        "PAYPAL"
+      ],
+      "all_categories": [
+        "Payment\u2192Payment (2)",
+        "Venmo\u2192Venmo (2)"
+      ]
+    },
+    {
+      "merchant_norm": "AMC ONLINE 9640",
+      "category": "Entertainment",
+      "subcategory": "Movies",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "AMC ONLINE 9640"
+      ],
+      "all_categories": [
+        "Entertainment\u2192Movies (2)",
+        "Entertainment\u2192Concessions (1)"
+      ]
+    },
+    {
+      "merchant_norm": "HYATT REGENCY MAUI",
+      "category": "Travel",
+      "subcategory": "Honeymoon",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "HYATT REGENCY MAUI"
+      ],
+      "all_categories": [
+        "Travel\u2192Honeymoon (2)",
+        "Entertainment\u2192Honeymoon (1)"
+      ]
+    },
+    {
+      "merchant_norm": "PATIENTPMT.COM",
+      "category": "Health & Wellness",
+      "subcategory": "Appointment",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "PATIENTPMT.COM"
+      ],
+      "all_categories": [
+        "Health & Wellness\u2192Appointment (2)",
+        "Health & Wellness\u2192Therapy (1)"
+      ]
+    },
+    {
+      "merchant_norm": "BUNGALOW GRILL LONG BEACH",
+      "category": "Food & Drink",
+      "subcategory": "Restaurant",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "BUNGALOW GRILL LONG BEACH NY 04/02",
+        "BUNGALOW GRILL LONG BEACH NY 04/03",
+        "BUNGALOW GRILL LONG BEACH NY                 09/05"
+      ],
+      "all_categories": [
+        "Food & Drink\u2192Restaurant (2)",
+        "Food & Drink\u2192Fast Casual (1)"
+      ]
+    },
+    {
+      "merchant_norm": "ISLAND PARK CAR WASH",
+      "category": "Bills & Utilities",
+      "subcategory": "Misc.",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "ISLAND PARK CAR WASH"
+      ],
+      "all_categories": [
+        "Bills & Utilities\u2192Misc. (2)",
+        "Shopping\u2192Misc. (1)"
+      ]
+    },
+    {
+      "merchant_norm": "DECKERSHOKA ONE ONE",
+      "category": "Gifts & Donations",
+      "subcategory": "Gift",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "DECKERS*HOKA ONE ONE"
+      ],
+      "all_categories": [
+        "Gifts & Donations\u2192Gift (2)",
+        "Shopping\u2192Clothes (1)"
+      ]
+    },
+    {
+      "merchant_norm": "VIATORTRIPADVISOR US",
+      "category": "Travel",
+      "subcategory": "Honeymoon",
+      "occurrences": 3,
+      "consistency": 0.3333333333333333,
+      "sample_descriptions": [
+        "VIATORTRIPADVISOR US"
+      ],
+      "all_categories": [
+        "Travel\u2192Honeymoon (1)",
+        "Travel\u2192Europe (1)",
+        "Entertainment\u2192Group (1)"
+      ]
+    },
+    {
+      "merchant_norm": "SUNGLASS HUT 4635",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 3,
+      "consistency": 0.3333333333333333,
+      "sample_descriptions": [
+        "SUNGLASS HUT 4635"
+      ],
+      "all_categories": [
+        "Shopping\u2192Clothes (1)",
+        "Shopping\u2192Misc. (1)",
+        "Health & Wellness\u2192Gifts (1)"
+      ]
+    },
+    {
+      "merchant_norm": "KOHL'S",
+      "category": "Shopping",
+      "subcategory": "Clothes",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "KOHL'S #0418"
+      ],
+      "all_categories": [
+        "Shopping\u2192Clothes (2)",
+        "Gifts & Donations\u2192Gift (1)"
+      ]
+    },
+    {
+      "merchant_norm": "CPICANTEEN VENDING FRMNG",
+      "category": "Food & Drink",
+      "subcategory": "Fast Casual",
+      "occurrences": 3,
+      "consistency": 0.6666666666666666,
+      "sample_descriptions": [
+        "CPI*CANTEEN VENDING FRMNG"
+      ],
+      "all_categories": [
+        "Food & Drink\u2192Fast Casual (2)",
+        "Food & Drink\u2192Other (1)"
+      ]
+    }
+  ],
+  "category_stats": {
+    "Shopping": 885,
+    "Travel": 666,
+    "Bills & Utilities": 528,
+    "Food & Drink": 1013,
+    "Groceries": 646,
+    "Health & Wellness": 392,
+    "Gifts & Donations": 159,
+    "Venmo": 304,
+    "Payment": 528,
+    "Entertainment": 317,
+    "Subscription": 126,
+    "Fees & Adjustments": 149,
+    "Gas": 10,
+    "Reimbursed": 32,
+    "Baby": 96,
+    "Personal": 11,
+    "Home": 1
+  },
+  "parameters": {
+    "min_occurrences": 3,
+    "min_consistency": 0.9
+  }
+}
