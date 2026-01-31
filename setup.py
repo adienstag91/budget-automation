@@ -16,13 +16,16 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/budget-automation",  # Update with your repo
-    package_dir={"": "src"},
-    packages=find_packages(where="src"),
+    package_dir={"": "."},
+    packages=find_packages(where="."),
     python_requires=">=3.10",
     install_requires=[
-        "psycopg2-binary>=2.9.9",
-        "anthropic>=0.39.0",
-        "python-dotenv>=1.0.0",
+        'psycopg2-binary>=2.9.9',
+        'anthropic>=0.39.0',
+        'python-dotenv>=1.0.0',
+        'streamlit>=1.30.0',      # ← Add
+        'plotly>=5.18.0',          # ← Add
+        'pandas>=2.1.0',           # ← Add
     ],
     extras_require={
         "dev": [
@@ -43,6 +46,7 @@ setup(
         "console_scripts": [
             "budget-init=budget_automation.cli.init_db:main",
             "budget-import=budget_automation.cli.import_csv:main",
+            "budget-review=budget_automation.cli.review:main",
         ],
     },
     classifiers=[

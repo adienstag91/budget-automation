@@ -154,10 +154,10 @@ def main():
     print("=" * 80)
     
     # Get project root
-    project_root = Path(__file__).parent.parent.parent.parent
+    project_root = Path(__file__).parent.parent.parent
     
     # Paths
-    schema_file = project_root / "src" / "budget_automation" / "db" / "db_schema.sql"
+    schema_file = project_root / "budget_automation" / "db" / "db_schema.sql"
     taxonomy_file = project_root / "data" / "taxonomy" / "taxonomy.json"
     learned_rules_file = project_root / "data" / "rules" / "learned_rules.sql"
     manual_rules_file = project_root / "data" / "rules" / "manual_rules.sql"

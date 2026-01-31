@@ -48,7 +48,7 @@ class CategorizationOrchestrator:
     def __init__(self, 
                  taxonomy: Dict,
                  rules: List[Dict],
-                 review_threshold: float = 0.90,
+                 review_threshold: float = 0.80,
                  enable_llm: bool = True,
                  api_key: Optional[str] = None):
         """
@@ -73,7 +73,7 @@ class CategorizationOrchestrator:
             self.llm_categorizer = LLMCategorizer(taxonomy, api_key)
             if not self.llm_categorizer.enabled:
                 print("⚠️  LLM categorization requested but API key not found")
-                self.enable_llm = False
+                self.enable_llm = True
         
         # Stats
         self.stats = {

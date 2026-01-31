@@ -9,9 +9,9 @@ __version__ = "1.0.0"
 __author__ = "Andrew"
 
 # Expose main classes for easy imports
-from .core.merchant_normalizer import normalize_merchant
-from .core.rule_matcher import RuleMatcher
-from .core.categorization_orchestrator import CategorizationOrchestrator
+from .merchant_normalizer import normalize_merchant
+from .rule_matcher import RuleMatcher
+from .categorization_orchestrator import CategorizationOrchestrator
 
 __all__ = [
     'normalize_merchant',

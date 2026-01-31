@@ -18,13 +18,13 @@ class TransactionParser:
     def __init__(self):
         self.transactions = []
     
-    def compute_row_hash(self, row_dict: Dict[str, str]) -> str:
+    def compute_row_hash(self, row_dict: Dict[str, str], row_index: int = 0) -> str:
         """
         Compute SHA256 hash of row for deduplication.
-        Uses transaction date, description, and amount.
+        Uses transaction date, description, amount, AND row index.
         """
-        # Create a deterministic string from key fields
-        hash_input = f"{row_dict.get('txn_date', '')}|{row_dict.get('description_raw', '')}|{row_dict.get('amount', '')}"
+        # Create a deterministic string from key fields + row position
+        hash_input = f"{row_dict.get('txn_date', '')}|{row_dict.get('description_raw', '')}|{row_dict.get('amount', '')}|{row_index}"
         return hashlib.sha256(hash_input.encode()).hexdigest()
     
     def parse_date(self, date_str: str) -> Optional[str]:
@@ -32,15 +32,23 @@ class TransactionParser:
         if not date_str:
             return None
         
-        # Try different date formats
+        from datetime import datetime
+        
+        # Try multiple date formats
         formats = [
-            '%m/%d/%Y',  # 12/31/2025
-            '%Y-%m-%d',  # 2025-12-31
+            '%m/%d/%Y',      # 01/30/2025
+            '%m/%d/%y',      # 1/30/23
+            '%-m/%-d/%Y',    # 1/30/2025 (no leading zeros)
+            '%-m/%-d/%y',    # 1/30/23
+            '%Y-%m-%d',      # 2025-01-30
         ]
         
         for fmt in formats:
             try:
-                dt = datetime.strptime(date_str.strip(), fmt)
+                dt = datetime.strptime(date_str, fmt)
+                # If 2-digit year, assume 2000s
+                if dt.year < 100:
+                    dt = dt.replace(year=dt.year + 2000)
                 return dt.strftime('%Y-%m-%d')
             except ValueError:
                 continue
@@ -78,7 +86,7 @@ class CheckingParser(TransactionParser):
         with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             
-            for row in reader:
+            for i, row in enumerate(reader):
                 # Parse basic fields
                 description_raw = row['Description'].strip()
                 amount = self.parse_amount(row['Amount'])
@@ -115,7 +123,7 @@ class CheckingParser(TransactionParser):
                 }
                 
                 # Compute hash for deduplication
-                txn['source_row_hash'] = self.compute_row_hash(txn)
+                txn['source_row_hash'] = self.compute_row_hash(txn, row_index=i)
                 
                 transactions.append(txn)
         
@@ -144,7 +152,7 @@ class CreditParser(TransactionParser):
         with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             
-            for row in reader:
+            for i, row in enumerate(reader):
                 # Parse basic fields
                 description_raw = row['Description'].strip()
                 amount = self.parse_amount(row['Amount'])
@@ -181,7 +189,7 @@ class CreditParser(TransactionParser):
                 }
                 
                 # Compute hash for deduplication
-                txn['source_row_hash'] = self.compute_row_hash(txn)
+                txn['source_row_hash'] = self.compute_row_hash(txn, row_index=i)
                 
                 transactions.append(txn)
         

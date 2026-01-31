@@ -23,7 +23,6 @@ from budget_automation.core.categorization_orchestrator import (
 # Load environment variables
 load_dotenv()
 
-
 def insert_transactions(conn, transactions: list):
     """Insert transactions into database with deduplication"""
     cursor = conn.cursor()
@@ -55,23 +54,21 @@ def insert_transactions(conn, transactions: list):
                 )
             """, txn)
             
+            conn.commit()  # ← Commit immediately after each successful insert
             inserted += 1
             
         except Exception as e:
+            conn.rollback()  # ← Only rolls back this one transaction
             if 'duplicate key' in str(e).lower() or 'unique' in str(e).lower():
-                conn.rollback()
                 duplicates += 1
             else:
                 print(f"⚠️  Error: {e}")
                 print(f"   Transaction: {txn.get('description_raw', 'unknown')[:50]}")
-                conn.rollback()
                 errors += 1
     
-    conn.commit()
     cursor.close()
     
     return inserted, duplicates, errors
-
 
 def main():
     """Main import function"""
@@ -80,7 +77,7 @@ def main():
     parser.add_argument('--csv-type', choices=['checking', 'credit', 'auto'], 
                        default='auto', help='CSV type (default: auto-detect)')
     parser.add_argument('--account-id', type=int, help='Account ID')
-    parser.add_argument('--no-llm', action='store_true', help='Disable LLM categorization')
+    parser.add_argument('--llm', action='store_true', help='Enable LLM categorization (uses API credits)')
     parser.add_argument('--dry-run', action='store_true', help='Parse and categorize but do not insert')
     
     args = parser.parse_args()
@@ -95,7 +92,7 @@ def main():
     print("=" * 80)
     print(f"CSV File: {csv_path}")
     print(f"CSV Type: {args.csv_type}")
-    print(f"LLM Enabled: {not args.no_llm}")
+    print(f"LLM Enabled: {args.llm}")
     print(f"Dry Run: {args.dry_run}")
     print("=" * 80)
     
@@ -111,7 +108,7 @@ def main():
     
     try:
         # Get project root for taxonomy
-        project_root = Path(__file__).parent.parent.parent.parent
+        project_root = Path(__file__).parent.parent.parent
         taxonomy_file = project_root / "data" / "taxonomy" / "taxonomy.json"
         
         with open(taxonomy_file) as f:
@@ -128,8 +125,11 @@ def main():
         
         # Create orchestrator
         print(f"\n🧠 Initializing categorization engine...")
-        review_threshold = float(os.getenv('REVIEW_THRESHOLD', '0.90'))
-        enable_llm = not args.no_llm and os.getenv('ENABLE_LLM', 'true').lower() == 'true'
+        review_threshold = float(os.getenv('REVIEW_THRESHOLD', '0.80'))
+        enable_llm_default = os.getenv('ENABLE_LLM', 'false').lower() == 'true'
+
+        # Use CLI flag to override, otherwise use .env setting
+        enable_llm = args.llm if hasattr(args, 'llm') else enable_llm_default
         
         orchestrator = CategorizationOrchestrator(
             taxonomy=taxonomy,
@@ -187,10 +187,14 @@ def main():
             # Convert back to dicts
             txn_dicts = []
             for txn in categorized:
-                orig_txn = next(t for t in parsed_txns 
-                              if t['description_raw'] == txn.description_raw 
-                              and t['txn_date'] == txn.txn_date
-                              and float(t['amount']) == txn.amount)
+                # Match by unique transaction signature instead of index
+                orig_txn = next(
+                    t for t in parsed_txns
+                    if t['description_raw'] == txn.description_raw
+                    and t['txn_date'] == txn.txn_date
+                    and abs(float(t['amount']) - txn.amount) < 0.01
+                    and t['source_row_hash'] not in [td['source_row_hash'] for td in txn_dicts]  # Prevent duplicates
+                )
                 
                 txn_dict = {
                     'account_id': txn.account_id,
@@ -217,7 +221,7 @@ def main():
                     'created_by': 'import',
                 }
                 txn_dicts.append(txn_dict)
-            
+
             inserted, duplicates, errors = insert_transactions(conn, txn_dicts)
             
             print(f"   ✅ Inserted: {inserted}")

@@ -108,6 +108,7 @@
         "OTF",
         "Therapy",
         "Physical Therapy",
+        "Races",
         "Other"
       ]
     },
@@ -134,6 +135,7 @@
         "Concert/Broadway",
         "Sports/Betting",
         "Beach/Activities",
+        "Concessions",
         "Other"
       ]
     },
