@@ -1,238 +1,204 @@
 {
-  "version": "1.0",
+  "version": "2.0",
+  "updated": "2026-02-02",
   "metadata": {
-    "created": "2025-01-14",
-    "description": "Personal budget taxonomy derived from historical transaction data",
-    "default_uncategorized": {
-      "category": "Uncategorized",
-      "subcategory": "Needs Review"
-    },
-    "review_threshold": 0.70
+    "description": "Updated taxonomy with Amazon-specific subcategories",
+    "changes": "Added granular subcategories for Baby, Pet, Home, Health, and Food based on Amazon purchase analysis"
   },
   "categories": [
     {
-      "name": "Income",
-      "display_order": 1,
-      "is_income": true,
-      "is_transfer": false,
+      "category": "Baby",
       "subcategories": [
-        "Salary",
-        "Family Support",
-        "Interest",
-        "Gift/Reimbursement",
-        "Other"
+        {"name": "Diapers & Wipes"},
+        {"name": "Formula & Feeding"},
+        {"name": "Food & Snacks"},
+        {"name": "Clothes"},
+        {"name": "Gear & Equipment"},
+        {"name": "Toys"},
+        {"name": "Daycare"},
+        {"name": "Medical"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Housing & Utilities",
-      "display_order": 2,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Pet",
       "subcategories": [
-        "Rent",
-        "Electricity",
-        "Gas/Heat",
-        "Internet/Wifi",
-        "Home Insurance",
-        "Other"
+        {"name": "Dog Food"},
+        {"name": "Dog Supplies"},
+        {"name": "Vet"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Transportation",
-      "display_order": 3,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Food & Drink",
       "subcategories": [
-        "Car Gas",
-        "Car Insurance",
-        "Car Payment",
-        "Parking",
-        "Uber/Lyft",
-        "MTA/Transit",
-        "E-ZPass",
-        "Other"
+        {"name": "Groceries"},
+        {"name": "Coffee & Beverages"},
+        {"name": "Restaurants"},
+        {"name": "Fast Casual"},
+        {"name": "Delivery"},
+        {"name": "Snacks"},
+        {"name": "Alcohol"}
       ]
     },
     {
-      "name": "Groceries",
-      "display_order": 4,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Transportation",
       "subcategories": [
-        "Stop & Shop",
-        "Trader Joes",
-        "Costco",
-        "Key Food",
-        "Other"
+        {"name": "Uber/Lyft"},
+        {"name": "Public Transit"},
+        {"name": "Parking"},
+        {"name": "Tolls"},
+        {"name": "Car Gas"},
+        {"name": "Car Maintenance"},
+        {"name": "Car Insurance"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Food & Drink",
-      "display_order": 5,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Housing",
       "subcategories": [
-        "Restaurant",
-        "Fast Casual",
-        "Coffee",
-        "Alcohol",
-        "Work",
-        "Other"
+        {"name": "Rent"},
+        {"name": "Mortgage"},
+        {"name": "Utilities"},
+        {"name": "Internet"},
+        {"name": "Phone"},
+        {"name": "Insurance"},
+        {"name": "Repairs"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Shopping",
-      "display_order": 6,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Home",
       "subcategories": [
-        "Amazon",
-        "Costco",
-        "Clothes",
-        "Home",
-        "Self Care",
-        "Target",
-        "Other"
+        {"name": "Furniture"},
+        {"name": "Decor"},
+        {"name": "Cleaning Supplies"},
+        {"name": "Household"},
+        {"name": "Appliances"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Health & Wellness",
-      "display_order": 7,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Health & Wellness",
       "subcategories": [
-        "Prescription",
-        "CVS/Pharmacy",
-        "Doctor/Appointments",
-        "Gym",
-        "OTF",
-        "Therapy",
-        "Physical Therapy",
-        "Races",
-        "Other"
+        {"name": "Doctor"},
+        {"name": "Dentist"},
+        {"name": "Pharmacy"},
+        {"name": "Toiletries"},
+        {"name": "OTF"},
+        {"name": "Gym"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Baby",
-      "display_order": 8,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Entertainment",
       "subcategories": [
-        "Daycare",
-        "Doctor/Health",
-        "Clothes",
-        "Activities",
-        "Other"
+        {"name": "Movies"},
+        {"name": "Concerts"},
+        {"name": "Sports"},
+        {"name": "Streaming Services"},
+        {"name": "Books"},
+        {"name": "Games"},
+        {"name": "Hobbies"},
+        {"name": "Concessions"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Entertainment",
-      "display_order": 9,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Shopping",
       "subcategories": [
-        "Movies",
-        "Concert/Broadway",
-        "Sports/Betting",
-        "Beach/Activities",
-        "Concessions",
-        "Other"
+        {"name": "Clothing & Shoes"},
+        {"name": "Electronics & Accessories"},
+        {"name": "Gifts"},
+        {"name": "Personal Items"},
+        {"name": "Amazon"},
+        {"name": "Costco"},
+        {"name": "Target"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Travel",
-      "display_order": 10,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Travel",
       "subcategories": [
-        "Flight",
-        "Hotel/Stay",
-        "Food/Dining",
-        "Activities",
-        "TSA/PreCheck",
-        "Other"
+        {"name": "Flights"},
+        {"name": "Hotels"},
+        {"name": "Rental Car"},
+        {"name": "Activities"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Subscriptions",
-      "display_order": 11,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Income",
       "subcategories": [
-        "Streaming",
-        "Education",
-        "AI/Software",
-        "iCloud/Storage",
-        "Music",
-        "Other"
+        {"name": "Salary"},
+        {"name": "Family Support"},
+        {"name": "Gift"},
+        {"name": "Refund"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Gifts & Donations",
-      "display_order": 12,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Transfers & Payments",
       "subcategories": [
-        "Gift",
-        "Donation"
+        {"name": "Credit Card Payment"},
+        {"name": "Venmo/Zelle Transfer"},
+        {"name": "Savings Transfer"},
+        {"name": "Investment Transfer"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Pet Care",
-      "display_order": 13,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Fees & Interest",
       "subcategories": [
-        "Veterinary",
-        "Food/Supplies",
-        "Other"
+        {"name": "Bank Fees"},
+        {"name": "ATM Fees"},
+        {"name": "Interest Earned"},
+        {"name": "Interest Paid"},
+        {"name": "Late Fees"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Fees & Interest",
-      "display_order": 14,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Education",
       "subcategories": [
-        "Bank Fees",
-        "Credit Card Interest",
-        "ATM Withdrawal",
-        "Other"
+        {"name": "Tuition"},
+        {"name": "Books"},
+        {"name": "Supplies"},
+        {"name": "Courses"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Reimbursed",
-      "display_order": 15,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Personal",
       "subcategories": [
-        "Amanda Work",
-        "Andrew Work",
-        "Other"
+        {"name": "Haircut"},
+        {"name": "Clothing"},
+        {"name": "Accessories"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Transfers & Payments",
-      "display_order": 16,
-      "is_income": false,
-      "is_transfer": true,
+      "category": "Charity",
       "subcategories": [
-        "Credit Card Payment",
-        "Venmo/Zelle Transfer",
-        "Savings Transfer",
-        "Investment Transfer",
-        "Small P2P",
-        "Other"
+        {"name": "Donations"},
+        {"name": "Gifts"},
+        {"name": "Other"}
       ]
     },
     {
-      "name": "Uncategorized",
-      "display_order": 99,
-      "is_income": false,
-      "is_transfer": false,
+      "category": "Subscriptions",
       "subcategories": [
-        "Needs Review",
-        "Unknown"
+        {"name": "Streaming"},
+        {"name": "Software"},
+        {"name": "News"},
+        {"name": "Other"}
+      ]
+    },
+    {
+      "category": "Uncategorized",
+      "subcategories": [
+        {"name": "Needs Review"},
+        {"name": "Other"}
       ]
     }
   ]

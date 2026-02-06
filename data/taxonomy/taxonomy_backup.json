@@ -1,0 +1,239 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "created": "2025-01-14",
+    "description": "Personal budget taxonomy derived from historical transaction data",
+    "default_uncategorized": {
+      "category": "Uncategorized",
+      "subcategory": "Needs Review"
+    },
+    "review_threshold": 0.70
+  },
+  "categories": [
+    {
+      "name": "Income",
+      "display_order": 1,
+      "is_income": true,
+      "is_transfer": false,
+      "subcategories": [
+        "Salary",
+        "Family Support",
+        "Interest",
+        "Gift/Reimbursement",
+        "Other"
+      ]
+    },
+    {
+      "name": "Housing & Utilities",
+      "display_order": 2,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Rent",
+        "Electricity",
+        "Gas/Heat",
+        "Internet/Wifi",
+        "Home Insurance",
+        "Other"
+      ]
+    },
+    {
+      "name": "Transportation",
+      "display_order": 3,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Car Gas",
+        "Car Insurance",
+        "Car Payment",
+        "Parking",
+        "Uber/Lyft",
+        "MTA/Transit",
+        "E-ZPass",
+        "Other"
+      ]
+    },
+    {
+      "name": "Groceries",
+      "display_order": 4,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Stop & Shop",
+        "Trader Joes",
+        "Costco",
+        "Key Food",
+        "Other"
+      ]
+    },
+    {
+      "name": "Food & Drink",
+      "display_order": 5,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Restaurant",
+        "Fast Casual",
+        "Coffee",
+        "Alcohol",
+        "Work",
+        "Other"
+      ]
+    },
+    {
+      "name": "Shopping",
+      "display_order": 6,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Amazon",
+        "Costco",
+        "Clothes",
+        "Home",
+        "Self Care",
+        "Target",
+        "Other"
+      ]
+    },
+    {
+      "name": "Health & Wellness",
+      "display_order": 7,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Prescription",
+        "CVS/Pharmacy",
+        "Doctor/Appointments",
+        "Gym",
+        "OTF",
+        "Therapy",
+        "Physical Therapy",
+        "Races",
+        "Other"
+      ]
+    },
+    {
+      "name": "Baby",
+      "display_order": 8,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Daycare",
+        "Doctor/Health",
+        "Clothes",
+        "Activities",
+        "Other"
+      ]
+    },
+    {
+      "name": "Entertainment",
+      "display_order": 9,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Movies",
+        "Concert/Broadway",
+        "Sports/Betting",
+        "Beach/Activities",
+        "Concessions",
+        "Other"
+      ]
+    },
+    {
+      "name": "Travel",
+      "display_order": 10,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Flight",
+        "Hotel/Stay",
+        "Food/Dining",
+        "Activities",
+        "TSA/PreCheck",
+        "Other"
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "display_order": 11,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Streaming",
+        "Education",
+        "AI/Software",
+        "iCloud/Storage",
+        "Music",
+        "Other"
+      ]
+    },
+    {
+      "name": "Gifts & Donations",
+      "display_order": 12,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Gift",
+        "Donation"
+      ]
+    },
+    {
+      "name": "Pet Care",
+      "display_order": 13,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Veterinary",
+        "Food/Supplies",
+        "Other"
+      ]
+    },
+    {
+      "name": "Fees & Interest",
+      "display_order": 14,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Bank Fees",
+        "Credit Card Interest",
+        "ATM Withdrawal",
+        "Other"
+      ]
+    },
+    {
+      "name": "Reimbursed",
+      "display_order": 15,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Amanda Work",
+        "Andrew Work",
+        "Other"
+      ]
+    },
+    {
+      "name": "Transfers & Payments",
+      "display_order": 16,
+      "is_income": false,
+      "is_transfer": true,
+      "subcategories": [
+        "Credit Card Payment",
+        "Venmo/Zelle Transfer",
+        "Savings Transfer",
+        "Investment Transfer",
+        "Small P2P",
+        "Other"
+      ]
+    },
+    {
+      "name": "Uncategorized",
+      "display_order": 99,
+      "is_income": false,
+      "is_transfer": false,
+      "subcategories": [
+        "Needs Review",
+        "Unknown"
+      ]
+    }
+  ]
+}

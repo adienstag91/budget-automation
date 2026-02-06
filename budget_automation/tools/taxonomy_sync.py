@@ -152,6 +152,25 @@ def sync_taxonomy(taxonomy_path, dry_run=False, remove_orphans=False):
         # Add new entries
         if to_add:
             print(f"\n➕ Adding {len(to_add)} entries...")
+            
+            # First, ensure all categories exist in taxonomy_categories table
+            categories_to_add = set(category for category, _ in to_add)
+            
+            print(f"   Ensuring {len(categories_to_add)} categories exist...")
+            
+            # Get current max display_order
+            cursor.execute("SELECT COALESCE(MAX(display_order), 0) FROM taxonomy_categories")
+            max_order = cursor.fetchone()[0]
+            
+            for i, category in enumerate(sorted(categories_to_add), 1):
+                cursor.execute("""
+                    INSERT INTO taxonomy_categories (category, display_order)
+                    VALUES (%s, %s)
+                    ON CONFLICT (category) DO NOTHING
+                """, (category, max_order + i))
+            
+            # Then add subcategories
+            print(f"   Adding {len(to_add)} subcategories...")
             for category, subcategory in to_add:
                 cursor.execute("""
                     INSERT INTO taxonomy_subcategories (category, subcategory)
