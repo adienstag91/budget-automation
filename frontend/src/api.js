@@ -55,17 +55,18 @@ export function fetchStats() {
   return getJSON(`/api/stats`);
 }
 
-// Update a single transaction's category/subcategory/notes and/or tags.
-// category/subcategory/notes go as query params; tags (an array) goes as the
-// JSON body. Sending tags alone updates only tags (no recategorization).
+// Update a single transaction's category/subcategory/notes/date and/or tags.
+// category/subcategory/notes/txnDate go as query params; tags (an array) goes as
+// the JSON body. Sending tags or txnDate alone does NOT recategorize the txn.
 export async function updateTransaction(
   txnId,
-  { category, subcategory, notes, tags } = {}
+  { category, subcategory, notes, txnDate, tags } = {}
 ) {
   const params = new URLSearchParams();
   if (category != null) params.set("category", category);
   if (subcategory != null) params.set("subcategory", subcategory);
   if (notes != null) params.set("notes", notes);
+  if (txnDate != null) params.set("txn_date", txnDate);
 
   const opts = { method: "PUT" };
   if (tags != null) {

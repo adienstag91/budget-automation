@@ -553,14 +553,21 @@ def update_transaction(
     category: Optional[str] = None,
     subcategory: Optional[str] = None,
     notes: Optional[str] = None,
+    txn_date: Optional[str] = None,
     tags: Optional[List[str]] = Body(default=None)
 ):
     """
-    Update a transaction's category, subcategory, notes, or tags.
+    Update a transaction's category, subcategory, notes, date, or tags.
 
     Recategorizing (changing category/subcategory/notes) marks the txn reviewed
-    and stamps category_source='manual'. Editing only tags does NOT touch
-    categorization state -- tags are independent, manual, ad-hoc labels.
+    and stamps category_source='manual'. Editing only tags or the date does NOT
+    touch categorization state.
+
+    A date edit is for correcting recurring bills that posted a day early/late
+    around a month boundary (so they land in the right month). We intentionally
+    DO NOT recompute source_row_hash: that hash is derived from the *original*
+    CSV row at import time, so leaving it untouched keeps re-imports of the same
+    statement correctly de-duplicated.
     """
     try:
         conn = get_db_connection()
@@ -584,6 +591,17 @@ def update_transaction(
         if notes is not None:
             updates.append("notes = %s")
             params.append(notes)
+
+        if txn_date is not None:
+            try:
+                datetime.strptime(txn_date, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="txn_date must be in YYYY-MM-DD format",
+                )
+            updates.append("txn_date = %s")
+            params.append(txn_date)
 
         if tags is not None:
             # Replace the full tag set. Normalize: trim, drop blanks, de-dupe.
@@ -611,25 +629,26 @@ def update_transaction(
             UPDATE transactions
             SET {', '.join(updates)}
             WHERE txn_id = %s
-            RETURNING txn_id, category, subcategory, needs_review, tags
+            RETURNING txn_id, category, subcategory, needs_review, tags, txn_date
         """
-        
+
         cursor.execute(query, params)
         result = cursor.fetchone()
-        
+
         if not result:
             raise HTTPException(status_code=404, detail="Transaction not found")
-        
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         return {
             "txn_id": result[0],
             "category": result[1],
             "subcategory": result[2],
             "needs_review": result[3],
             "tags": result[4] or [],
+            "txn_date": result[5].strftime('%Y-%m-%d') if result[5] else None,
             "message": "Transaction updated successfully"
         }
     
