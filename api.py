@@ -138,47 +138,75 @@ def get_pivot_data(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     include_subcategories: bool = Query(False, description="Include subcategory breakdown"),
-    months_limit: int = Query(12, description="Number of recent months to include")
+    months_limit: int = Query(12, description="Number of recent months to include"),
+    view: str = Query("expense", description="expense | income | all"),
 ):
     """
     Get pivot table data with categories and monthly spending.
-    
-    This is the main endpoint your Lovable frontend will call.
+
+    `view` controls what's counted:
+      - expense (default): outflows only (direction='debit'), with categories
+        flagged is_transfer excluded and exclude_from_budget txns dropped — this
+        is real spending.
+      - income: inflows into is_income categories (direction='credit',
+        exclude_from_budget dropped).
+      - all: every categorized outflow, no flag filtering (reconciliation / raw view,
+        matches the original pivot behavior).
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        # Build query for category-level data
+
+        # Build query for category-level data. LEFT JOIN the taxonomy so we can
+        # honor the per-category is_income / is_transfer flags.
         query = """
             WITH monthly_spending AS (
-                SELECT 
-                    DATE_TRUNC('month', txn_date) AS month,
-                    category,
-                    subcategory,
-                    SUM(amount) AS total_spent,
+                SELECT
+                    DATE_TRUNC('month', t.txn_date) AS month,
+                    t.category,
+                    t.subcategory,
+                    SUM(t.amount) AS total_spent,
                     COUNT(*) AS transaction_count
-                FROM transactions
-                WHERE direction = 'debit'
-                    AND category IS NOT NULL
-                    AND category != ''
+                FROM transactions t
+                LEFT JOIN taxonomy_categories tc ON tc.category = t.category
+                WHERE t.category IS NOT NULL
+                    AND t.category != ''
         """
-        
+
+        if view == "income":
+            # Inflows into income categories; honor the budget-exclusion flag.
+            query += """
+                    AND t.direction = 'credit'
+                    AND COALESCE(tc.is_income, FALSE) = TRUE
+                    AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+            """
+        elif view == "all":
+            # Raw / reconciliation view: outflows, no flag filtering (original behavior).
+            query += " AND t.direction = 'debit'"
+        else:
+            # Default "expense": real spending — outflows, drop transfers/payments
+            # and anything explicitly excluded from the budget.
+            query += """
+                    AND t.direction = 'debit'
+                    AND COALESCE(tc.is_transfer, FALSE) = FALSE
+                    AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+            """
+
         params = []
         if start_date:
-            query += " AND txn_date >= %s"
+            query += " AND t.txn_date >= %s"
             params.append(start_date)
         if end_date:
-            query += " AND txn_date <= %s"
+            query += " AND t.txn_date <= %s"
             params.append(end_date)
         
         query += """
-                GROUP BY 
-                    DATE_TRUNC('month', txn_date),
-                    category,
-                    subcategory
+                GROUP BY
+                    DATE_TRUNC('month', t.txn_date),
+                    t.category,
+                    t.subcategory
             )
-            SELECT 
+            SELECT
                 TO_CHAR(month, 'YYYY-MM') as month,
                 category,
                 COALESCE(subcategory, 'Uncategorized') as subcategory,
