@@ -9,6 +9,7 @@ import {
 import PivotPage from "./PivotPage.jsx";
 import ReviewQueuePage from "./ReviewQueuePage.jsx";
 import TaxonomyPage from "./TaxonomyPage.jsx";
+import ImportPage from "./ImportPage.jsx";
 import { fetchStats } from "./api.js";
 
 // Simple placeholder for pages not built yet.
@@ -91,7 +92,7 @@ export default function AppShell() {
               path="/transactions"
               element={<Placeholder name="Transactions" />}
             />
-            <Route path="/import" element={<Placeholder name="Import" />} />
+            <Route path="/import" element={<ImportPage />} />
             <Route path="/settings/taxonomy" element={<TaxonomyPage />} />
             <Route path="*" element={<Navigate to="/pivot" replace />} />
           </Routes>

@@ -17,14 +17,38 @@ class TransactionParser:
     
     def __init__(self):
         self.transactions = []
-    
-    def compute_row_hash(self, row_dict: Dict[str, str], row_index: int = 0) -> str:
+        # Tracks, per content key, how many identical rows we've already seen in
+        # THIS file so each gets a stable occurrence number (1, 2, 3, ...).
+        self._occurrence_counts: Dict[str, int] = {}
+
+    def compute_row_hash(self, row_dict: Dict[str, str]) -> str:
         """
-        Compute SHA256 hash of row for deduplication.
-        Uses transaction date, description, amount, AND row index.
+        Compute SHA256 hash of a row for deduplication.
+
+        Key = txn_date | description_raw | amount | account_id | occurrence
+
+        The occurrence number is the 1-based position of this row among rows
+        with an identical content key *within the same file*. This makes the
+        hash:
+          - stable across re-imports of the same statement (same rows in the
+            same order → same occurrence numbering), so re-imports dedup
+            reliably; and
+          - able to distinguish genuine same-day repeat purchases (e.g. six
+            $2.90 subway swipes become occurrences 1..6 and are all kept),
+
+        unlike the old scheme which hashed raw CSV row position and broke when
+        unrelated rows shifted (the TECH_DEBT re-import duplicate bug).
         """
-        # Create a deterministic string from key fields + row position
-        hash_input = f"{row_dict.get('txn_date', '')}|{row_dict.get('description_raw', '')}|{row_dict.get('amount', '')}|{row_index}"
+        content_key = (
+            f"{row_dict.get('txn_date', '')}"
+            f"|{row_dict.get('description_raw', '')}"
+            f"|{row_dict.get('amount', '')}"
+            f"|{row_dict.get('account_id', '')}"
+        )
+        occurrence = self._occurrence_counts.get(content_key, 0) + 1
+        self._occurrence_counts[content_key] = occurrence
+
+        hash_input = f"{content_key}|{occurrence}"
         return hashlib.sha256(hash_input.encode()).hexdigest()
     
     def parse_date(self, date_str: str) -> Optional[str]:
@@ -85,8 +109,8 @@ class CheckingParser(TransactionParser):
         
         with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
-            
-            for i, row in enumerate(reader):
+
+            for row in reader:
                 # Parse basic fields
                 description_raw = row['Description'].strip()
                 amount = self.parse_amount(row['Amount'])
@@ -123,10 +147,10 @@ class CheckingParser(TransactionParser):
                 }
                 
                 # Compute hash for deduplication
-                txn['source_row_hash'] = self.compute_row_hash(txn, row_index=i)
-                
+                txn['source_row_hash'] = self.compute_row_hash(txn)
+
                 transactions.append(txn)
-        
+
         print(f"✅ Parsed {len(transactions)} transactions from checking CSV")
         return transactions
 
@@ -151,8 +175,8 @@ class CreditParser(TransactionParser):
         
         with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
-            
-            for i, row in enumerate(reader):
+
+            for row in reader:
                 # Parse basic fields
                 description_raw = row['Description'].strip()
                 amount = self.parse_amount(row['Amount'])
@@ -189,10 +213,10 @@ class CreditParser(TransactionParser):
                 }
                 
                 # Compute hash for deduplication
-                txn['source_row_hash'] = self.compute_row_hash(txn, row_index=i)
-                
+                txn['source_row_hash'] = self.compute_row_hash(txn)
+
                 transactions.append(txn)
-        
+
         print(f"✅ Parsed {len(transactions)} transactions from credit CSV")
         return transactions
 

@@ -6,62 +6,55 @@
 
 ## 🔴 High Priority
 
-### LLM Categorization Broken
+### ✅ LLM Categorization Broken — RESOLVED 2026-06-02
 **Context:**
 - Tried to enable LLM categorization in Amazon enrichment Phase 1
 - Error: `Missing taxonomy_loader module` and taxonomy format parsing errors
 - Root cause: Taxonomy structure changed (wrapper format) but LLM loader not updated
 
-**Impact:**
-- Can't auto-categorize enriched transactions with LLM
-- Currently falling back to generic categories ("Shopping/Amazon", "Income/Other")
-- Requires manual categorization in dashboard
+**Resolution:**
+- Added `budget_automation/core/taxonomy_db.py::load_taxonomy_from_db(conn)`, a
+  single helper that builds the LLM-expected taxonomy shape
+  (`{'categories': [{'name', 'subcategories': [...]}, ...]}`) directly from the
+  **DB** (`taxonomy_categories` + `taxonomy_subcategories`), which is the
+  authoritative source. This retires the stale `taxonomy.json` loader in the
+  import/enrichment path entirely.
+- Wired it into both the importer (via `import_service`) and `amazon_enrichment.py`.
+  Also fixed a latent bug where Amazon product categorization called a
+  non-existent `categorize_transaction()` — now calls the real
+  `LLMCategorizer.categorize(...)`.
+- LLM is now exercised on the import **preview** (cost paid once); commit trusts the
+  previewed rows.
 
-**Workaround:**
-- Manual categorization in dashboard Review Queue
-- Create rules after categorizing a few similar items
-
-**To Fix:**
-- Debug `budget_automation/llm/taxonomy_loader.py`
-- Update to handle new taxonomy.json wrapper structure
-- Test with sample transactions
-- Re-enable `--llm` flag in enrichment scripts
-
-**Parked:** 2026-02-04  
-**Priority:** High (blocks auto-categorization)  
-**Effort:** ~2 hours
+**Resolved:** 2026-06-02
 
 ---
 
-### CSV Import Duplicate Detection Bug
+### ✅ CSV Import Duplicate Detection Bug — RESOLVED 2026-06-02
 **Context:**
 - When re-importing December credit statement, 15 transactions marked as "duplicates"
 - One specific transaction ($41.06 Amazon on 12/3) rejected but doesn't exist in database
 - Hash calculation mystery: transaction exists in CSV but import thinks it's duplicate
 
-**Impact:**
-- Had to manually INSERT missing transactions
-- Unreliable deduplication could cause missing data
+**Root cause:**
+- The old hash keyed on `txn_date|description_raw|amount|row_index`. The `row_index`
+  was the *raw CSV row position*, so when unrelated rows shifted between exports the
+  same real transaction produced a *different* hash on re-import — breaking dedup.
 
-**Investigation Done:**
-- Hash uses: `txn_date|description_raw|amount|row_index`
-- Checked database for existing hash: not found
-- Checked for similar transactions: not found
-- Theory: Cross-statement duplicates? But transaction date doesn't overlap
+**Resolution:**
+- `compute_row_hash` (`budget_automation/core/csv_parser.py`) now keys on a stable
+  content key `txn_date|description_raw|amount|account_id` plus a **per-file
+  occurrence counter** (1, 2, 3, … among identical rows in the same file). This is
+  stable across re-imports of the same statement, yet still distinguishes genuine
+  same-day repeat charges (e.g. six identical subway swipes become occurrences 1–6
+  and are all kept). Verified the collision count on existing data before committing.
+- The import **preview** dedups by the same **content key** (occurrence-aware), not
+  only by hash, so rows that were imported under the *old* hash scheme are still
+  recognized as duplicates on the first re-import after the change (the one-time
+  old-hash mismatch can't create dupes). Amount is normalized to a 2-decimal string
+  so DB `Decimal("35.00")` and parsed `float 35.0` compare equal.
 
-**Workaround:**
-- Manual INSERT for missing transactions
-- Verify count after import (should match CSV row count)
-
-**To Fix:**
-- Add debug logging to `budget_automation/core/csv_parser.py`
-- Print hash for each row during import
-- Add `--verbose` flag to show skipped duplicates with reason
-- Add validation: count imported vs CSV rows
-
-**Parked:** 2026-02-04  
-**Priority:** High (data integrity)  
-**Effort:** ~3 hours
+**Resolved:** 2026-06-02
 
 ---
 

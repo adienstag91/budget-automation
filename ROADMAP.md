@@ -48,8 +48,21 @@ Goal: confirm the database is set up correctly and the numbers are trustworthy
 - [ ] **Clear the 42 needs-review** transactions — recategorize each and create
       rules where it makes sense, *so the next upload needs less review.*
       Review Queue screen is built; queue is down from 96 → 42.
-- [ ] **Import + enrichment UX** (Amazon / Venmo) — upload CSV, run enrichment,
-      see results. Makes adding data self-service going forward.
+- [x] **Import + enrichment UX** (Chase CSV + Amazon) — *(done 2026-06-02)* new
+      `/import` page (`frontend/src/ImportPage.jsx`) with a two-step **upload →
+      preview → confirm** flow; nothing is written to the DB until the user approves
+      a parsed preview. Backend: shared `import_service` (`categorize_parsed` +
+      `insert_transactions`) reused by both the CLI and the new API
+      (`/api/import/preview`, `/api/import/commit`); the importer + LLM now read the
+      **taxonomy from the DB** (`taxonomy_db.load_taxonomy_from_db`), retiring the
+      `taxonomy.json` dependency in the import path. Amazon: `/api/amazon/import`
+      (stage), `/api/amazon/enrichment/preview` (read-only plan), and
+      `/api/amazon/enrichment/commit` — the destructive hard-delete of the matched
+      card txn is replaced by a **reversible soft-supersede** (`exclude_from_budget
+      = TRUE`, which the pivot already filters out). LLM cost is paid only on
+      preview; commit trusts the previewed rows (re-validated against the taxonomy,
+      not re-LLM'd). Verified e2e + in-browser. **Venmo enrichment web surface
+      deferred** (CLI stays) — follow-up after Amazon proves the pattern.
 - [ ] **Import newer statements** (Chase checking + credit past Jan 5) — only
       after the above, so they import into a clean system.
 
@@ -166,7 +179,14 @@ Goal: understand trends, not just totals.
       biggest movers (best once data is clean + tagged)
 
 ## Cross-cutting (whenever it fits)
-- [ ] Fix the duplicate-detection bug (TECH_DEBT) **before** bulk imports
+- [x] Fix the duplicate-detection bug (TECH_DEBT) **before** bulk imports —
+      *(done 2026-06-02)* the dedup hash dropped the fragile `row_index` (which
+      shifted when unrelated rows moved) in favor of a stable
+      `txn_date|description_raw|amount|account_id|occurrence` content key with a
+      per-file occurrence counter, so re-imports of the same statement dedup
+      reliably while genuine same-day repeat charges are still kept. The import
+      preview also dedups by **content key** (occurrence-aware), so old-style stored
+      hashes from before the change are still recognized as duplicates.
 - [ ] Commit/push to GitHub so work is backed up off the laptop
 - [ ] Eventually: free hosting (Vercel/Netlify + deployed API) to retire Lovable cost
 - [ ] **(nice-to-have) "Show the SQL" inspector** — an expandable modal on data-heavy

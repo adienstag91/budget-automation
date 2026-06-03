@@ -105,6 +105,59 @@ export async function createRule({
   return res.json();
 }
 
+// ===== Import (Chase CSV) + Amazon enrichment =====
+// Uploads use FormData, not the JSON helpers above.
+
+async function postForm(url, formData) {
+  const res = await fetch(url, { method: "POST", body: formData });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const data = await res.json();
+      detail = data.detail || JSON.stringify(data);
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    throw new Error(detail || `Request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+// Parse + categorize a Chase CSV and return a preview (writes nothing).
+export function importPreview(file, { accountId, useLlm = false } = {}) {
+  const fd = new FormData();
+  fd.append("file", file);
+  if (accountId != null) fd.append("account_id", String(accountId));
+  fd.append("use_llm", String(useLlm));
+  return postForm(`/api/import/preview`, fd);
+}
+
+// Commit the kept rows from a preview (no re-LLM; re-validated server-side).
+export function importCommit(rows) {
+  return sendJSON(`/api/import/commit`, "POST", { rows });
+}
+
+// Stage an Amazon order-history CSV into amazon_orders_raw.
+export function amazonImport(file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return postForm(`/api/amazon/import`, fd);
+}
+
+// Read-only enrichment plan (matches, line items, txns to supersede).
+export function amazonEnrichPreview({ startDate, useLlm = false } = {}) {
+  const params = new URLSearchParams({ use_llm: String(useLlm) });
+  if (startDate) params.set("start_date", startDate);
+  return getJSON(`/api/amazon/enrichment/preview?${params.toString()}`);
+}
+
+// Commit enrichment for approved order ids (soft-supersedes matched txns).
+export function amazonEnrichCommit(orderIds, { useLlm = false, startDate } = {}) {
+  const body = { order_ids: orderIds, use_llm: useLlm };
+  if (startDate) body.start_date = startDate;
+  return sendJSON(`/api/amazon/enrichment/commit`, "POST", body);
+}
+
 // ===== Taxonomy management =====
 // Shared helper for the mutating taxonomy endpoints (JSON body in, JSON out,
 // API error text surfaced). GET goes through getJSON above.
