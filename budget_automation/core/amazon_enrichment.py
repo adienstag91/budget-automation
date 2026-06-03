@@ -11,6 +11,7 @@ import json
 
 from budget_automation.utils.db_connection import get_db_connection
 from budget_automation.core.llm_categorizer import LLMCategorizer
+from budget_automation.core.taxonomy_db import load_taxonomy_from_db
 
 
 def get_unenriched_orders(conn, start_date='2023-01-01'):
@@ -121,22 +122,22 @@ def categorize_product_with_llm(product_name, llm_categorizer):
     
     Returns: (category, subcategory) tuple
     """
-    if not llm_categorizer:
+    if not llm_categorizer or not getattr(llm_categorizer, 'enabled', False):
         # Fallback to Shopping/Amazon if no LLM
         return ('Shopping', 'Amazon')
-    
+
     try:
-        # Create a minimal transaction-like dict for LLM
-        fake_txn = {
-            'merchant_norm': 'AMAZON',
-            'merchant_detail': product_name[:100],  # Truncate long names
-            'amount': 0,  # Amount doesn't matter for categorization
-            'description': f"Amazon - {product_name}"
-        }
-        
-        result = llm_categorizer.categorize_transaction(fake_txn)
-        return (result['category'], result['subcategory'])
-        
+        result = llm_categorizer.categorize(
+            merchant_norm='AMAZON',
+            merchant_detail=product_name[:100],  # Truncate long names
+            description_raw=f"Amazon - {product_name}",
+            amount=0.0,  # Amount doesn't matter for product categorization
+            direction='debit',
+        )
+        if result:
+            return (result['category'], result['subcategory'])
+        return ('Shopping', 'Amazon')
+
     except Exception as e:
         print(f"⚠️  LLM categorization failed for '{product_name[:50]}': {e}")
         return ('Shopping', 'Amazon')
@@ -276,6 +277,243 @@ def expand_amazon_order(conn, order, matched_txn, payment_source, llm_categorize
     cursor.close()
 
 
+# ---------------------------------------------------------------------------
+# API-callable enrichment (no input(), soft-supersede, caller-controlled txn)
+# ---------------------------------------------------------------------------
+
+def build_enrichment_plan(conn, start_date='2023-01-01', use_llm=False):
+    """
+    Build a read-only enrichment plan for the web preview. Writes nothing.
+
+    For every unenriched order it finds the matching card txn (if any) and the
+    line items that would be created (with categories). The card txn that *would
+    be superseded* is reported so the UI can show it before anything changes.
+
+    Returns:
+        {
+          "use_llm": bool,
+          "totals": {orders, matched, unmatched, line_items, total_amount},
+          "orders": [
+            {
+              "order_id", "order_date" (iso), "total" (float),
+              "payment_source": "credit_card" | "unknown",
+              "matched_txn": {txn_id, txn_date (iso), amount} | None,
+              "items": [{product_name, asin, quantity, amount,
+                         category, subcategory}, ...]
+            }, ...
+          ]
+        }
+    """
+    llm_categorizer = None
+    if use_llm:
+        try:
+            taxonomy = load_taxonomy_from_db(conn)
+            llm_categorizer = LLMCategorizer(taxonomy)
+            if not llm_categorizer.enabled:
+                llm_categorizer = None
+        except Exception:
+            llm_categorizer = None
+
+    orders = get_unenriched_orders(conn, start_date)
+
+    plan_orders = []
+    matched_count = 0
+    line_item_count = 0
+    total_amount = Decimal('0.00')
+
+    for order in orders:
+        match = find_matching_transaction(conn, order['order_date'], order['total'])
+        payment_source = 'credit_card' if match else 'unknown'
+        if match:
+            matched_count += 1
+
+        items = []
+        for item in order['items']:
+            category, subcategory = categorize_product_with_llm(
+                item['product_name'], llm_categorizer
+            )
+            items.append({
+                'product_name': item['product_name'],
+                'asin': item['asin'],
+                'quantity': item['quantity'],
+                'amount': float(item['total_owed']),
+                'category': category,
+                'subcategory': subcategory,
+            })
+        line_item_count += len(items)
+        total_amount += order['total']
+
+        plan_orders.append({
+            'order_id': order['order_id'],
+            'order_date': order['order_date'].isoformat() if hasattr(order['order_date'], 'isoformat') else str(order['order_date']),
+            'total': float(order['total']),
+            'payment_source': payment_source,
+            'matched_txn': (
+                {
+                    'txn_id': match['txn_id'],
+                    'txn_date': match['txn_date'].isoformat() if hasattr(match['txn_date'], 'isoformat') else str(match['txn_date']),
+                    'amount': float(match['amount']),
+                }
+                if match else None
+            ),
+            'items': items,
+        })
+
+    return {
+        'use_llm': bool(llm_categorizer),
+        'totals': {
+            'orders': len(orders),
+            'matched': matched_count,
+            'unmatched': len(orders) - matched_count,
+            'line_items': line_item_count,
+            'total_amount': float(total_amount),
+        },
+        'orders': plan_orders,
+    }
+
+
+def _expand_order_soft(conn, order, matched_txn, payment_source, llm_categorizer):
+    """
+    Expand one order into line items, soft-superseding the matched card txn
+    (exclude_from_budget = TRUE) instead of deleting it. Does NOT commit — the
+    caller owns the transaction so a whole batch is atomic.
+    """
+    import hashlib
+
+    cursor = conn.cursor()
+
+    if matched_txn:
+        cursor.execute(
+            "SELECT account_id, txn_date FROM transactions WHERE txn_id = %s",
+            (matched_txn['txn_id'],),
+        )
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            raise ValueError(f"Matched transaction {matched_txn['txn_id']} not found")
+        account_id, txn_date = row
+        # Soft-supersede: keep the original, drop it from the budget (reversible).
+        cursor.execute(
+            """
+            UPDATE transactions
+            SET exclude_from_budget = TRUE,
+                notes = COALESCE(notes, '') ||
+                        ' [superseded by Amazon enrichment of order ' || %s || ']'
+            WHERE txn_id = %s
+            """,
+            (order['order_id'], matched_txn['txn_id']),
+        )
+    else:
+        cursor.execute(
+            "SELECT account_id FROM accounts WHERE account_name = 'Chase Credit' LIMIT 1"
+        )
+        result = cursor.fetchone()
+        account_id = result[0] if result else 2
+        txn_date = order['order_date']
+
+    source = 'amazon_enrichment'
+
+    for item in order['items']:
+        category, subcategory = categorize_product_with_llm(
+            item['product_name'], llm_categorizer
+        )
+        product_name_short = item['product_name'][:60]
+        hash_str = f"amazon_{order['order_id']}_{item['asin']}"
+        source_row_hash = f"amz_{hashlib.md5(hash_str.encode()).hexdigest()[:8]}"
+
+        if payment_source == 'credit_card':
+            payment_note = f"Order: {order['order_id']} | ASIN: {item['asin']} | Qty: {item['quantity']} | Paid via credit card"
+        else:
+            payment_note = f"Order: {order['order_id']} | ASIN: {item['asin']} | Qty: {item['quantity']} | Payment method unknown (possibly gift card)"
+
+        cursor.execute(
+            """
+            INSERT INTO transactions (
+                account_id, txn_date, post_date, description_raw, direction,
+                amount, merchant_raw, merchant_norm, merchant_detail,
+                category, subcategory, needs_review, source, source_row_hash,
+                created_by, notes
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            ON CONFLICT (source_row_hash) DO NOTHING
+            """,
+            (
+                account_id, txn_date, txn_date,
+                f"Amazon - {product_name_short}", 'debit',
+                float(item['total_owed']), 'AMAZON', 'AMAZON', product_name_short,
+                category, subcategory, True, source, source_row_hash,
+                'amazon_enrichment', payment_note,
+            ),
+        )
+
+    cursor.execute(
+        """
+        UPDATE amazon_orders_raw
+        SET enriched = TRUE, enriched_date = NOW(),
+            matched_txn_id = %s
+        WHERE order_id = %s
+        """,
+        (matched_txn['txn_id'] if matched_txn else None, order['order_id']),
+    )
+    cursor.close()
+
+
+def commit_enrichment(conn, order_ids, use_llm=False, start_date='2023-01-01'):
+    """
+    Enrich the approved order_ids in a single DB transaction.
+
+    Soft-supersedes (exclude_from_budget=TRUE) matched card txns rather than
+    deleting them. Rolls back the whole batch on any error.
+
+    Returns: {"enriched_orders", "line_items", "superseded_txns",
+              "skipped_already_enriched"}
+    """
+    llm_categorizer = None
+    if use_llm:
+        try:
+            taxonomy = load_taxonomy_from_db(conn)
+            llm_categorizer = LLMCategorizer(taxonomy)
+            if not llm_categorizer.enabled:
+                llm_categorizer = None
+        except Exception:
+            llm_categorizer = None
+
+    requested = set(order_ids or [])
+    # Only operate on orders that are still unenriched and requested.
+    all_orders = {o['order_id']: o for o in get_unenriched_orders(conn, start_date)}
+
+    enriched_orders = 0
+    line_items = 0
+    superseded = 0
+    skipped = 0
+
+    try:
+        for oid in requested:
+            order = all_orders.get(oid)
+            if order is None:
+                skipped += 1
+                continue
+            match = find_matching_transaction(conn, order['order_date'], order['total'])
+            payment_source = 'credit_card' if match else 'unknown'
+            _expand_order_soft(conn, order, match, payment_source, llm_categorizer)
+            enriched_orders += 1
+            line_items += len(order['items'])
+            if match:
+                superseded += 1
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+    return {
+        'enriched_orders': enriched_orders,
+        'line_items': line_items,
+        'superseded_txns': superseded,
+        'skipped_already_enriched': skipped,
+    }
+
+
 def enrich_amazon_orders(start_date='2023-01-01', use_llm=False, dry_run=False):
     """
     Main enrichment process
@@ -303,47 +541,9 @@ def enrich_amazon_orders(start_date='2023-01-01', use_llm=False, dry_run=False):
     if use_llm:
         print("\n🤖 Initializing LLM categorizer...")
         try:
-            import json
-            from pathlib import Path
-            
-            # Load taxonomy from file
-            taxonomy_path = Path('data/taxonomy/taxonomy.json')
-            with open(taxonomy_path) as f:
-                taxonomy_data = json.load(f)
-            
-            # Extract categories - handle different formats
-            taxonomy = {}
-            
-            if isinstance(taxonomy_data, dict) and 'categories' in taxonomy_data:
-                # Wrapped format: {"version": ..., "categories": [...]}
-                categories = taxonomy_data['categories']
-            elif isinstance(taxonomy_data, list):
-                # Direct list format: [{category: ...}, ...]
-                categories = taxonomy_data
-            else:
-                # Assume it's already in the right format
-                categories = taxonomy_data
-            
-            # Convert to dict format {category: [subcats]}
-            if isinstance(categories, list):
-                for cat in categories:
-                    if isinstance(cat, dict):
-                        cat_name = cat.get('category', cat.get('name', ''))
-                        if cat_name:
-                            subcats = cat.get('subcategories', [])
-                            taxonomy[cat_name] = [
-                                s.get('name', s) if isinstance(s, dict) else str(s) 
-                                for s in subcats
-                            ]
-            elif isinstance(categories, dict):
-                # Already in right format
-                taxonomy = categories
-            
-            if not taxonomy:
-                raise Exception("No categories found in taxonomy file")
-            
+            taxonomy = load_taxonomy_from_db(conn)
             llm_categorizer = LLMCategorizer(taxonomy)
-            print(f"✅ LLM ready (loaded {len(taxonomy)} categories)")
+            print(f"✅ LLM ready (loaded {len(taxonomy['categories'])} categories)")
         except Exception as e:
             print(f"⚠️  LLM initialization failed: {e}")
             print("   Continuing without LLM (will use Shopping/Amazon for all)")

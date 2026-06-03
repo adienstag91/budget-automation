@@ -7,7 +7,7 @@ your Lovable frontend can consume.
 Run with: uvicorn api:app --reload --port 8000
 """
 
-from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi import FastAPI, HTTPException, Query, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, date
 from typing import Optional, List
@@ -15,6 +15,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
 import os
+import tempfile
 
 app = FastAPI(title="Budget Pivot API", version="1.0.0")
 
@@ -1427,6 +1428,318 @@ def delete_subcategory(body: SubcategoryRef):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
+        conn.close()
+
+
+# ============================================================================
+# Import (Chase CSV) — upload → preview → commit
+# ============================================================================
+
+# Cap upload size to protect the server (statements are tiny: ~50-300 rows).
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+def _valid_taxonomy_pairs(conn) -> set:
+    """Set of valid (category, subcategory) pairs from the DB taxonomy, plus
+    each category paired with None (category-only assignment is allowed)."""
+    cursor = conn.cursor()
+    cursor.execute("SELECT category, subcategory FROM taxonomy_subcategories")
+    pairs = {(c, s) for c, s in cursor.fetchall()}
+    cursor.execute("SELECT category FROM taxonomy_categories")
+    for (c,) in cursor.fetchall():
+        pairs.add((c, None))
+    cursor.close()
+    return pairs
+
+
+@app.post("/api/import/preview")
+async def import_preview(
+    file: UploadFile = File(...),
+    account_id: Optional[int] = Form(None),
+    use_llm: bool = Form(False),
+):
+    """
+    Parse + categorize an uploaded Chase CSV and return a preview. Writes NOTHING.
+
+    The LLM (if enabled) is paid here, not on commit. Each returned row carries
+    everything commit needs to insert it, plus a per-row `is_duplicate` flag so
+    the user can see which rows already exist before importing.
+    """
+    from budget_automation.core.csv_parser import parse_chase_csv
+    from budget_automation.core.import_service import (
+        categorize_parsed,
+        existing_hashes_for,
+        existing_content_keys,
+        content_key,
+    )
+
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 5 MB)")
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    tmp_path = None
+    conn = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".csv", delete=False
+        ) as tmp:
+            tmp.write(raw)
+            tmp_path = tmp.name
+
+        try:
+            parsed = parse_chase_csv(tmp_path, "auto", account_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        if not parsed:
+            return {"csv_type": None, "account_id": account_id,
+                    "totals": {"parsed": 0}, "rows": []}
+
+        detected_account = parsed[0]["account_id"]
+        csv_type = parsed[0]["source"]
+
+        conn = get_db_connection()
+        txn_dicts, stats = categorize_parsed(conn, parsed, enable_llm=use_llm)
+
+        # Duplicate detection robust to the dedup-hash scheme change: a row is a
+        # duplicate if its new-style hash is already stored, OR if the DB already
+        # holds at least as many rows with the same content key as this row's
+        # occurrence index (handles rows inserted under the old hash scheme).
+        new_hashes = [t["source_row_hash"] for t in txn_dicts]
+        stored = existing_hashes_for(conn, new_hashes)
+        account_ids = list({t["account_id"] for t in txn_dicts})
+        db_key_counts = existing_content_keys(conn, account_ids)
+
+        seen_occurrence: dict = {}
+        rows = []
+        dup_count = 0
+        for t in txn_dicts:
+            key = content_key(
+                t["txn_date"], t["description_raw"], t["amount"], t["account_id"]
+            )
+            seen_occurrence[key] = seen_occurrence.get(key, 0) + 1
+            occ = seen_occurrence[key]
+
+            is_dup = (
+                t["source_row_hash"] in stored
+                or db_key_counts.get(key, 0) >= occ
+            )
+            if is_dup:
+                dup_count += 1
+
+            rows.append({
+                "source_row_hash": t["source_row_hash"],
+                "txn_date": str(t["txn_date"]),
+                "post_date": str(t["post_date"]),
+                "description_raw": t["description_raw"],
+                "merchant_norm": t["merchant_norm"],
+                "merchant_detail": t["merchant_detail"],
+                "amount": float(t["amount"]),
+                "direction": t["direction"],
+                "category": t["category"],
+                "subcategory": t["subcategory"],
+                "category_source": t["category_source"],
+                "category_confidence": (
+                    float(t["category_confidence"])
+                    if t["category_confidence"] is not None else None
+                ),
+                "needs_review": t["needs_review"],
+                "is_duplicate": is_dup,
+                # carried for commit (not shown), so commit need not re-parse/LLM
+                "_insert": {
+                    "account_id": t["account_id"],
+                    "source": t["source"],
+                    "merchant_raw": t["merchant_raw"],
+                    "currency": t["currency"],
+                    "type": t["type"],
+                    "is_return": t["is_return"],
+                    "notes": t["notes"],
+                    "memo": t["memo"],
+                },
+            })
+
+        return {
+            "csv_type": csv_type,
+            "account_id": detected_account,
+            "totals": {
+                "parsed": len(rows),
+                "new": len(rows) - dup_count,
+                "duplicates": dup_count,
+                "rule_matched": stats.get("rule_match", 0),
+                "llm_matched": stats.get("llm_suggest", 0),
+                "needs_review": stats.get("needs_review", 0),
+            },
+            "rows": rows,
+        }
+    finally:
+        if conn is not None:
+            conn.close()
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+class ImportCommitRow(BaseModel):
+    source_row_hash: str
+    txn_date: str
+    post_date: Optional[str] = None
+    description_raw: str
+    merchant_norm: str
+    merchant_detail: Optional[str] = None
+    amount: float
+    direction: str
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    category_source: Optional[str] = None
+    category_confidence: Optional[float] = None
+    needs_review: bool = False
+    _insert: dict
+
+
+class ImportCommitBody(BaseModel):
+    rows: List[dict]
+
+
+@app.post("/api/import/commit")
+def import_commit(body: ImportCommitBody):
+    """
+    Insert the rows the user kept (from a prior preview). Does NOT re-run the
+    LLM. Categories are re-validated against the DB taxonomy to prevent a tampered
+    client from writing invalid pairs. Dedup on source_row_hash UNIQUE is the
+    backstop.
+    """
+    from budget_automation.core.import_service import insert_transactions
+
+    if not body.rows:
+        return {"inserted": 0, "duplicates": 0, "errors": 0}
+
+    conn = get_db_connection()
+    try:
+        valid_pairs = _valid_taxonomy_pairs(conn)
+
+        txn_dicts = []
+        for r in body.rows:
+            ins = r.get("_insert", {})
+            category = r.get("category")
+            subcategory = r.get("subcategory")
+            # Validate against taxonomy; anything invalid falls back to review.
+            if (category, subcategory) not in valid_pairs and (category, None) not in valid_pairs:
+                category, subcategory = "Uncategorized", "Needs Review"
+                needs_review = True
+            else:
+                needs_review = bool(r.get("needs_review", False))
+
+            txn_dicts.append({
+                "account_id": ins["account_id"],
+                "source": ins["source"],
+                "source_row_hash": r["source_row_hash"],
+                "txn_date": r["txn_date"],
+                "post_date": r.get("post_date") or r["txn_date"],
+                "description_raw": r["description_raw"],
+                "merchant_raw": ins["merchant_raw"],
+                "merchant_norm": r["merchant_norm"],
+                "merchant_detail": r.get("merchant_detail"),
+                "amount": r["amount"],
+                "currency": ins.get("currency", "USD"),
+                "direction": r["direction"],
+                "type": ins.get("type"),
+                "is_return": ins.get("is_return", False),
+                "category": category,
+                "subcategory": subcategory,
+                "category_source": r.get("category_source"),
+                "category_confidence": r.get("category_confidence"),
+                "needs_review": needs_review,
+                "notes": ins.get("notes"),
+                "memo": ins.get("memo"),
+                "created_by": "import",
+            })
+
+        inserted, duplicates, errors = insert_transactions(conn, txn_dicts)
+        return {"inserted": inserted, "duplicates": duplicates, "errors": errors}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# Amazon enrichment — stage orders → preview → commit (soft-supersede)
+# ============================================================================
+
+@app.post("/api/amazon/import")
+async def amazon_import(file: UploadFile = File(...)):
+    """Stage an uploaded Amazon order-history CSV into amazon_orders_raw."""
+    from budget_automation.core.amazon_import import stage_amazon_orders
+
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 5 MB)")
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    tmp_path = None
+    conn = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".csv", delete=False
+        ) as tmp:
+            tmp.write(raw)
+            tmp_path = tmp.name
+
+        conn = get_db_connection()
+        result = stage_amazon_orders(conn, tmp_path)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn is not None:
+            conn.close()
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+@app.get("/api/amazon/enrichment/preview")
+def amazon_enrichment_preview(
+    start_date: str = "2023-01-01",
+    use_llm: bool = False,
+):
+    """Read-only enrichment plan: matches, line items, and card txns that would
+    be superseded. Writes nothing."""
+    from budget_automation.core.amazon_enrichment import build_enrichment_plan
+
+    conn = get_db_connection()
+    try:
+        return build_enrichment_plan(conn, start_date=start_date, use_llm=use_llm)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+class AmazonEnrichBody(BaseModel):
+    order_ids: List[str]
+    use_llm: bool = False
+    start_date: str = "2023-01-01"
+
+
+@app.post("/api/amazon/enrichment/commit")
+def amazon_enrichment_commit(body: AmazonEnrichBody):
+    """Enrich approved orders in a single transaction. Soft-supersedes matched
+    card txns (exclude_from_budget=TRUE) instead of deleting them."""
+    from budget_automation.core.amazon_enrichment import commit_enrichment
+
+    conn = get_db_connection()
+    try:
+        return commit_enrichment(
+            conn,
+            body.order_ids,
+            use_llm=body.use_llm,
+            start_date=body.start_date,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
         conn.close()
 
 

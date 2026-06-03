@@ -97,6 +97,101 @@ def parse_amazon_csv(csv_path):
     return orders
 
 
+def stage_amazon_orders(conn, csv_path):
+    """
+    Non-interactive Amazon order staging for the web API.
+
+    Parses the CSV, dedups within the file and against the DB on (order_id, asin),
+    inserts the new rows into amazon_orders_raw, and commits.
+
+    Returns: {"parsed", "duplicates_in_csv", "already_imported", "inserted",
+              "batch_id"}
+    """
+    orders = parse_amazon_csv(csv_path)
+    parsed = len(orders)
+
+    # Dedup within the file.
+    seen = set()
+    unique = []
+    duplicates_in_csv = 0
+    for o in orders:
+        key = (o['order_id'], o['asin'])
+        if key in seen:
+            duplicates_in_csv += 1
+            continue
+        seen.add(key)
+        unique.append(o)
+    orders = unique
+
+    if not orders:
+        return {
+            'parsed': parsed,
+            'duplicates_in_csv': duplicates_in_csv,
+            'already_imported': 0,
+            'inserted': 0,
+            'batch_id': None,
+        }
+
+    cursor = conn.cursor()
+    batch_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    order_keys = [(o['order_id'], o['asin']) for o in orders]
+    placeholders = ','.join(['(%s, %s)'] * len(order_keys))
+    flat_keys = [v for pair in order_keys for v in pair]
+    cursor.execute(
+        f"SELECT order_id, asin FROM amazon_orders_raw WHERE (order_id, asin) IN ({placeholders})",
+        flat_keys,
+    )
+    existing = set(cursor.fetchall())
+    new_orders = [o for o in orders if (o['order_id'], o['asin']) not in existing]
+
+    insert_query = """
+        INSERT INTO amazon_orders_raw (
+            order_id, asin, website, order_date, purchase_order_number,
+            currency, unit_price, unit_price_tax, shipping_charge,
+            total_discounts, total_owed, shipment_item_subtotal,
+            shipment_item_subtotal_tax, product_name, product_condition,
+            quantity, payment_instrument_type, order_status,
+            shipment_status, ship_date, shipping_option,
+            shipping_address, billing_address, carrier_name_tracking,
+            gift_message, gift_sender_name, gift_recipient_contact,
+            item_serial_number, import_batch_id
+        ) VALUES (
+            %(order_id)s, %(asin)s, %(website)s, %(order_date)s,
+            %(purchase_order_number)s, %(currency)s, %(unit_price)s,
+            %(unit_price_tax)s, %(shipping_charge)s, %(total_discounts)s,
+            %(total_owed)s, %(shipment_item_subtotal)s,
+            %(shipment_item_subtotal_tax)s, %(product_name)s,
+            %(product_condition)s, %(quantity)s, %(payment_instrument_type)s,
+            %(order_status)s, %(shipment_status)s, %(ship_date)s,
+            %(shipping_option)s, %(shipping_address)s, %(billing_address)s,
+            %(carrier_name_tracking)s, %(gift_message)s, %(gift_sender_name)s,
+            %(gift_recipient_contact)s, %(item_serial_number)s, %(batch_id)s
+        )
+    """
+
+    inserted = 0
+    try:
+        for o in new_orders:
+            o['batch_id'] = batch_id
+            cursor.execute(insert_query, o)
+            inserted += 1
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        cursor.close()
+        raise
+
+    cursor.close()
+    return {
+        'parsed': parsed,
+        'duplicates_in_csv': duplicates_in_csv,
+        'already_imported': len(orders) - len(new_orders),
+        'inserted': inserted,
+        'batch_id': batch_id,
+    }
+
+
 def import_amazon_orders(csv_path, dry_run=False):
     """
     Import Amazon orders into staging table with deduplication
