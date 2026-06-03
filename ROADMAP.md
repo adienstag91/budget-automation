@@ -72,13 +72,18 @@ Goal: slice the pivot the way you actually think.
       longer inflate spending. All three views reconcile exactly to raw SQL.
 - [ ] **Search / view by category, subcategory, or merchant** (reuses drilldown)
 - [ ] **Conditional formatting** — highlight unusually high month cells
-- [ ] **Edit an individual transaction's date** — recurring bills often land a day
-      early/late around weekends + month boundaries (e.g. last-day-of-month vs
-      first-of-next), which shows up as one month double-billed and the next month
-      empty (seen on electricity). Let a date be corrected from the drilldown /
-      transactions view so the month it lands in is right. *Heads-up:* `txn_date`
-      feeds `source_row_hash` (dedup), so re-hash (or exclude date from the hash) on
-      edit, or a re-import of the same row could duplicate it — note in TECH_DEBT.
+- [x] **Edit an individual transaction's date** (manual edit) — *(done 2026-06-02)*
+      recurring bills often land a day early/late around weekends + month boundaries
+      (e.g. last-day-of-month vs first-of-next), which shows up as one month
+      double-billed and the next month empty (seen on electricity). Date is editable
+      inline from the drilldown via `DateEditControl`. Scope: **manual edit only** —
+      ad-hoc purchases landing a day off don't matter; this is for the **recurring
+      payments**, which conditional formatting (above) will flag (the double-bill /
+      zero-bill discrepancy). A date edit is **not** a recategorization (leaves
+      `category_source`/`needs_review` alone) and deliberately **leaves
+      `source_row_hash` untouched** — the hash is computed once at import from the
+      original CSV row, so a re-import of the same statement still recomputes the
+      original hash and dedups correctly.
 
 ## Phase 2 — Tagging (deprioritized — only if you want it)
 Tagging is **not a priority**. The `tags TEXT[]` column already exists (empty)

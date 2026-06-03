@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { fetchTransactions, fmtCurrency, fmtMonthLabel } from "./api.js";
 import RecategorizeControl from "./components/RecategorizeControl.jsx";
 import TagEditor from "./components/TagEditor.jsx";
+import DateEditControl from "./components/DateEditControl.jsx";
 
 export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
   const [txns, setTxns] = useState([]);
@@ -62,7 +63,13 @@ export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
                 <span className="amount">{fmtCurrency(t.amount)}</span>
               </div>
               <div className="meta">
-                {t.txn_date}
+                <DateEditControl
+                  txn={t}
+                  onSaved={() => {
+                    load();
+                    onChanged && onChanged();
+                  }}
+                />
                 {t.notes ? ` · ${t.notes}` : ""}
               </div>
               <RecategorizeControl

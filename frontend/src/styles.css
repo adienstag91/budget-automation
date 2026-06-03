@@ -450,6 +450,51 @@ body {
   margin-top: 2px;
 }
 
+/* Click-to-edit transaction date (inside .meta) */
+.date-edit-trigger {
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  padding: 0;
+  cursor: pointer;
+}
+.date-edit-trigger:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.date-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.date-edit input {
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.date-edit button {
+  font-size: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.date-edit button.ghost {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--border);
+}
+.date-edit button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .recat {
   margin-top: 8px;
   display: flex;
