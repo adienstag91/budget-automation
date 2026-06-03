@@ -1743,6 +1743,66 @@ def amazon_enrichment_commit(body: AmazonEnrichBody):
         conn.close()
 
 
+@app.get("/api/import/last-dates")
+def import_last_dates():
+    """Latest transaction/order DATE we already hold, per import type, so the
+    user knows where to resume uploading. Reports the date of the most recent
+    transaction/order itself (not when it was uploaded or enriched).
+
+    - Chase: MAX(txn_date) per account, filtered to real statement sources
+      (chase_checking / chase_credit) so enrichment line-items don't skew it.
+    - Amazon: MAX(order_date) from amazon_orders_raw.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT
+                a.account_id AS account_id,
+                a.account_name,
+                a.account_type,
+                MAX(t.txn_date) AS last_txn_date,
+                COUNT(t.txn_id) AS txn_count
+            FROM accounts a
+            LEFT JOIN transactions t
+                ON t.account_id = a.account_id
+               AND t.source IN ('chase_checking', 'chase_credit')
+            GROUP BY a.account_id, a.account_name, a.account_type
+            ORDER BY a.account_id
+        """)
+        chase = [
+            {
+                "account_id": r["account_id"],
+                "account_name": r["account_name"],
+                "account_type": r["account_type"],
+                "last_txn_date": r["last_txn_date"].isoformat() if r["last_txn_date"] else None,
+                "txn_count": r["txn_count"],
+            }
+            for r in cursor.fetchall()
+        ]
+
+        cursor.execute("""
+            SELECT
+                MAX(order_date) AS last_order_date,
+                COUNT(DISTINCT order_id) AS order_count
+            FROM amazon_orders_raw
+        """)
+        amz = cursor.fetchone()
+        amazon = {
+            "last_order_date": amz["last_order_date"].isoformat() if amz["last_order_date"] else None,
+            "order_count": amz["order_count"],
+        }
+
+        cursor.close()
+        conn.close()
+
+        return {"chase": chase, "amazon": amazon}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
