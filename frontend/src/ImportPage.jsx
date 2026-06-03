@@ -1,17 +1,42 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   importPreview,
   importCommit,
   amazonImport,
   amazonEnrichPreview,
   amazonEnrichCommit,
+  importLastDates,
   fmtCurrency,
 } from "./api.js";
+
+// "2026-02-27" or "2026-01-05T16:09:00" -> "Feb 27, 2026"
+function fmtDate(s) {
+  if (!s) return null;
+  const d = new Date(s.slice(0, 10) + "T00:00:00");
+  if (isNaN(d)) return s.slice(0, 10);
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 // Two-step import + Amazon enrichment under /import.
 // Nothing is written to the DB until the user confirms a parsed preview.
 export default function ImportPage() {
   const [tab, setTab] = useState("chase");
+  const [lastDates, setLastDates] = useState(null);
+
+  const refreshLastDates = useCallback(() => {
+    importLastDates()
+      .then(setLastDates)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshLastDates();
+  }, [refreshLastDates]);
+
   return (
     <div className="page">
       <div className="toolbar">
@@ -33,9 +58,47 @@ export default function ImportPage() {
       </div>
       <div className="content">
         <div className="import-wrap">
-          {tab === "chase" ? <ChaseImport /> : <AmazonImport />}
+          {tab === "chase" ? (
+            <ChaseImport
+              lastDates={lastDates}
+              onImported={refreshLastDates}
+            />
+          ) : (
+            <AmazonImport lastDates={lastDates} />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Latest transaction/order date we already hold, so the user knows where to
+// resume uploading. Shows the date of the data itself, not when it was uploaded.
+function ChaseLastDates({ lastDates }) {
+  if (!lastDates) return null;
+  return (
+    <div className="import-lastdates">
+      <span className="import-lastdates-label">Last imported:</span>
+      {lastDates.chase.map((a) => (
+        <span key={a.account_id} className="import-lastdates-item">
+          {a.account_name}{" "}
+          <b>{fmtDate(a.last_txn_date) || "—"}</b>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function AmazonLastDates({ lastDates }) {
+  if (!lastDates) return null;
+  const amz = lastDates.amazon;
+  return (
+    <div className="import-lastdates">
+      <span className="import-lastdates-label">Last order:</span>
+      <span className="import-lastdates-item">
+        <b>{fmtDate(amz.last_order_date) || "—"}</b>
+        {amz.order_count ? ` · ${amz.order_count} orders staged` : ""}
+      </span>
     </div>
   );
 }
@@ -43,7 +106,7 @@ export default function ImportPage() {
 // ---------------------------------------------------------------------------
 // Chase CSV: upload -> preview (rows + dup flags) -> exclude rows -> commit
 // ---------------------------------------------------------------------------
-function ChaseImport() {
+function ChaseImport({ lastDates, onImported }) {
   const [file, setFile] = useState(null);
   const [useLlm, setUseLlm] = useState(false);
   const [preview, setPreview] = useState(null);
@@ -92,15 +155,17 @@ function ChaseImport() {
       .then((res) => {
         setResult(res);
         setPreview(null);
+        onImported && onImported();
       })
       .catch((e) => setError(e.message))
       .finally(() => setBusy(false));
-  }, [preview, excluded]);
+  }, [preview, excluded, onImported]);
 
   const keptCount = preview ? preview.rows.length - excluded.size : 0;
 
   return (
     <div>
+      <ChaseLastDates lastDates={lastDates} />
       <div className="import-controls">
         <input
           type="file"
@@ -228,7 +293,7 @@ function ChaseImport() {
 // ---------------------------------------------------------------------------
 // Amazon: upload order CSV -> stage -> preview enrichment -> commit
 // ---------------------------------------------------------------------------
-function AmazonImport() {
+function AmazonImport({ lastDates }) {
   const [file, setFile] = useState(null);
   const [useLlm, setUseLlm] = useState(false);
   const [stageResult, setStageResult] = useState(null);
@@ -295,6 +360,7 @@ function AmazonImport() {
 
   return (
     <div>
+      <AmazonLastDates lastDates={lastDates} />
       <div className="import-controls">
         <input
           type="file"

@@ -768,6 +768,34 @@ body {
   max-width: 1100px;
 }
 
+.import-lastdates {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.import-lastdates-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.import-lastdates-item {
+  color: var(--muted);
+}
+
+.import-lastdates-item b {
+  color: #111827;
+  font-weight: 600;
+}
+
 .import-controls {
   display: flex;
   align-items: center;

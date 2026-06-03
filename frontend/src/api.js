@@ -144,6 +144,13 @@ export function amazonImport(file) {
   return postForm(`/api/amazon/import`, fd);
 }
 
+// Latest transaction/order date we already hold, per import type.
+// { chase: [{account_id, account_name, account_type, last_txn_date, txn_count}],
+//   amazon: {last_order_date, order_count} }
+export function importLastDates() {
+  return getJSON(`/api/import/last-dates`);
+}
+
 // Read-only enrichment plan (matches, line items, txns to supersede).
 export function amazonEnrichPreview({ startDate, useLlm = false } = {}) {
   const params = new URLSearchParams({ use_llm: String(useLlm) });
