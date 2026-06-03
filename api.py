@@ -263,11 +263,18 @@ def get_pivot_data(
             # Filter to only included months
             filtered_monthly = {m: monthly_data.get(m, 0.0) for m in sorted_months}
             total = sum(filtered_monthly.values())
-            
+
+            # Hide categories with no activity in the visible window / current
+            # view (e.g. data only outside the month range, or excluded by the
+            # view filter). Mirrors the subcategory empty-row hiding on the
+            # frontend so empty rows don't reappear.
+            if total == 0:
+                continue
+
             # Update grand totals
             for month, amount in filtered_monthly.items():
                 grand_totals[month] += amount
-            
+
             category_obj = CategoryData(
                 category=category,
                 monthly_data=filtered_monthly,
