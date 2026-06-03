@@ -71,8 +71,8 @@ def get_review_queue(conn):
             direction,
             category,
             subcategory,
-            tag_source,
-            tag_confidence,
+            category_source,
+            category_confidence,
             notes
         FROM transactions
         WHERE needs_review = TRUE
@@ -108,8 +108,8 @@ def update_transaction(conn, txn_id, category, subcategory, create_rule=False,
         SET category = %s,
             subcategory = %s,
             needs_review = FALSE,
-            tag_source = 'manual',
-            tag_confidence = 1.0
+            category_source = 'manual',
+            category_confidence = 1.0
         WHERE txn_id = %s
     """, (category, subcategory, txn_id))
     
@@ -170,7 +170,7 @@ def render_review_queue():
         total_amount = df[df['direction'] == 'debit']['amount'].sum()
         st.metric("Total Expenses", f"${total_amount:,.2f}")
     with col3:
-        avg_confidence = df['tag_confidence'].mean() * 100
+        avg_confidence = df['category_confidence'].mean() * 100
         st.metric("Avg Confidence", f"{avg_confidence:.0f}%")
     
     st.markdown("---")
@@ -225,7 +225,7 @@ def render_single_review(df, taxonomy, conn):
     ---
     
     **Current Category:** {row['category']} / {row['subcategory']}  
-    **Source:** {row['tag_source']} ({row['tag_confidence']:.0%} confidence)
+    **Source:** {row['category_source']} ({row['category_confidence']:.0%} confidence)
     """)
     
     # Categorization form
@@ -312,7 +312,7 @@ def render_bulk_review(df, taxonomy, conn):
     with col2:
         source_filter = st.multiselect(
             "Filter by Source",
-            options=sorted(df['tag_source'].unique()),
+            options=sorted(df['category_source'].unique()),
             key="bulk_source_filter"
         )
     
@@ -321,7 +321,7 @@ def render_bulk_review(df, taxonomy, conn):
     if merchant_filter:
         filtered_df = filtered_df[filtered_df['merchant_norm'].isin(merchant_filter)]
     if source_filter:
-        filtered_df = filtered_df[filtered_df['tag_source'].isin(source_filter)]
+        filtered_df = filtered_df[filtered_df['category_source'].isin(source_filter)]
     
     if filtered_df.empty:
         st.warning("No transactions match your filters")
@@ -383,10 +383,10 @@ def render_bulk_review(df, taxonomy, conn):
     
     display_df = filtered_df[[
         'txn_date', 'description_raw', 'merchant_norm', 
-        'amount', 'category', 'subcategory', 'tag_confidence'
+        'amount', 'category', 'subcategory', 'category_confidence'
     ]].copy()
     
-    display_df['tag_confidence'] = display_df['tag_confidence'].apply(lambda x: f"{x:.0%}")
+    display_df['category_confidence'] = display_df['category_confidence'].apply(lambda x: f"{x:.0%}")
     display_df['amount'] = display_df['amount'].apply(lambda x: f"${x:,.2f}")
     
     st.dataframe(

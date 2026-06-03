@@ -34,8 +34,8 @@ class Transaction:
     # Will be filled by categorization
     category: Optional[str] = None
     subcategory: Optional[str] = None
-    tag_source: Optional[str] = None
-    tag_confidence: Optional[float] = None
+    category_source: Optional[str] = None
+    category_confidence: Optional[float] = None
     needs_review: bool = False
     notes: Optional[str] = None
 
@@ -107,8 +107,8 @@ class CategorizationOrchestrator:
         if result.category != 'Uncategorized':
             txn.category = result.category
             txn.subcategory = result.subcategory
-            txn.tag_source = 'rule'
-            txn.tag_confidence = result.tag_confidence
+            txn.category_source = 'rule'
+            txn.category_confidence = result.category_confidence
             txn.needs_review = False
             txn.notes = result.rationale
             
@@ -129,12 +129,12 @@ class CategorizationOrchestrator:
             if llm_result:
                 txn.category = llm_result['category']
                 txn.subcategory = llm_result['subcategory']
-                txn.tag_source = 'llm'
-                txn.tag_confidence = llm_result['confidence']
+                txn.category_source = 'llm'
+                txn.category_confidence = llm_result['confidence']
                 txn.notes = llm_result['rationale']
                 
                 # Check if confidence meets threshold
-                if txn.tag_confidence >= self.review_threshold:
+                if txn.category_confidence >= self.review_threshold:
                     txn.needs_review = False
                     self.stats['high_confidence'] += 1
                 else:
@@ -147,8 +147,8 @@ class CategorizationOrchestrator:
         # Step 3: No match, no LLM, or LLM failed -> needs review
         txn.category = 'Uncategorized'
         txn.subcategory = 'Needs Review'
-        txn.tag_source = 'none'
-        txn.tag_confidence = 0.0
+        txn.category_source = 'none'
+        txn.category_confidence = 0.0
         txn.needs_review = True
         txn.notes = 'No matching rule or LLM suggestion'
         
@@ -183,8 +183,8 @@ class CategorizationOrchestrator:
                 # Rule matched
                 txn.category = result.category
                 txn.subcategory = result.subcategory
-                txn.tag_source = 'rule'
-                txn.tag_confidence = 1.0
+                txn.category_source = 'rule'
+                txn.category_confidence = 1.0
                 txn.needs_review = False
                 txn.notes = result.rationale
                 
@@ -213,11 +213,11 @@ class CategorizationOrchestrator:
                 if llm_result:
                     txn.category = llm_result['category']
                     txn.subcategory = llm_result['subcategory']
-                    txn.tag_source = 'llm'
-                    txn.tag_confidence = llm_result['confidence']
+                    txn.category_source = 'llm'
+                    txn.category_confidence = llm_result['confidence']
                     txn.notes = llm_result.get('rationale', 'LLM suggestion')
                     
-                    if txn.tag_confidence >= self.review_threshold:
+                    if txn.category_confidence >= self.review_threshold:
                         txn.needs_review = False
                         self.stats['high_confidence'] += 1
                     else:
@@ -229,8 +229,8 @@ class CategorizationOrchestrator:
                     # LLM failed
                     txn.category = 'Uncategorized'
                     txn.subcategory = 'Needs Review'
-                    txn.tag_source = 'none'
-                    txn.tag_confidence = 0.0
+                    txn.category_source = 'none'
+                    txn.category_confidence = 0.0
                     txn.needs_review = True
                     txn.notes = 'No matching rule or LLM suggestion'
                     self.stats['needs_review'] += 1
@@ -241,8 +241,8 @@ class CategorizationOrchestrator:
             for txn in uncategorized:
                 txn.category = 'Uncategorized'
                 txn.subcategory = 'Needs Review'
-                txn.tag_source = 'none'
-                txn.tag_confidence = 0.0
+                txn.category_source = 'none'
+                txn.category_confidence = 0.0
                 txn.needs_review = True
                 txn.notes = 'No matching rule'
                 self.stats['needs_review'] += 1
@@ -408,7 +408,7 @@ def test_orchestrator():
     for txn in results:
         status = "✅" if not txn.needs_review else "⚠️ "
         print(f"{status} {txn.merchant_norm:<30} → {txn.category} / {txn.subcategory}")
-        print(f"     Source: {txn.tag_source}, Confidence: {txn.tag_confidence:.0%}")
+        print(f"     Source: {txn.category_source}, Confidence: {txn.category_confidence:.0%}")
         if txn.notes:
             print(f"     Note: {txn.notes}")
     

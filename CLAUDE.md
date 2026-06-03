@@ -141,7 +141,8 @@ mypy budget_automation/
 - `transactions.merchant_norm`: Normalized merchant name for rule matching
 - `transactions.merchant_detail`: Additional detail for composite rules (extracted by normalizer, stored in `merchant_raw` field)
 - `transactions.source_row_hash`: SHA256 hash for deduplication
-- `transactions.tag_confidence`: Confidence score (0.0-1.0)
+- `transactions.category_source`: How the category was assigned (rule, llm, manual, venmo_expanded, none)
+- `transactions.category_confidence`: Confidence score (0.0-1.0)
 - `transactions.needs_review`: Boolean flag for review queue
 - `merchant_rules.match_detail`: For composite rules (SQ + business, Zelle + payee)
 - `merchant_rules.priority`: Lower number = higher priority (10 = manual, 50 = composite, 100 = learned)

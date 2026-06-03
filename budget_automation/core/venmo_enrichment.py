@@ -395,7 +395,7 @@ def apply_cashout_expansions(conn, expansions: List[Dict], dry_run: bool = False
                     description_raw, merchant_raw, merchant_norm, merchant_detail,
                     amount, currency, direction, type, is_return,
                     category, subcategory,
-                    tag_source, tag_confidence, needs_review,
+                    category_source, category_confidence, needs_review,
                     notes, created_by
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
