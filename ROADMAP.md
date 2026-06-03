@@ -30,12 +30,24 @@ works.
 ## Phase 0 — DB Setup & Trust (do first)
 Goal: confirm the database is set up correctly and the numbers are trustworthy
 **before** the next big upload.
-- [ ] **DB health pass** — confirm schema, accounts, taxonomy, and indexes are
-      right; spot-check that pivot totals match reality.
-- [ ] **Decide the unused tag columns** (see note below) — keep & use, or drop.
-- [ ] **Clear the 96 needs-review** transactions — recategorize each and create
+- [x] **DB health pass** (2026-06-02) — schema/indexes healthy (dedup unique on
+      `source_row_hash`, partial indexes on `needs_review`/`exclude_from_budget`, GIN on
+      `tags`). 5,932 txns / 2 Chase accounts / 232 rules / 17 categories / 130 subcats.
+      **Taxonomy integrity perfect** (0 dangling cat/subcat refs, 0 orphan rows).
+      **Pivot reconciles exactly** to raw SQL ($110,633.57 debit, Jul–Dec 2025). Clean
+      data: no dupes, no null dates/dirs/hashes, no future dates. Findings to act on:
+      (a) pivot counts `Transfers & Payments` (~$65k / 59% of that window) as "spending" —
+      it ignores the existing `is_transfer` / `exclude_from_budget` flags → fix with the
+      income/expense + transfer-exclusion work; (b) 1 miscategorized outflow (txn 30270,
+      a $300 CHECK tagged `Income/Other`); (c) 1 harmless $0.00 Amazon line (txn 43899);
+      (d) Chase **Checking** only has Dec-2025 loaded (51 txns) — older checking history
+      missing (covered by "Import newer statements"). Queue down to **42** needs-review.
+- [x] **Decide the unused tag columns** — resolved: renamed to
+      `category_source` / `category_confidence` (provenance) and `tags TEXT[]` (real tags,
+      GIN-indexed). Kept and in use. (See note below.)
+- [ ] **Clear the 42 needs-review** transactions — recategorize each and create
       rules where it makes sense, *so the next upload needs less review.*
-      Needs a small **Review Queue screen** (API already supports it).
+      Review Queue screen is built; queue is down from 96 → 42.
 - [ ] **Import + enrichment UX** (Amazon / Venmo) — upload CSV, run enrichment,
       see results. Makes adding data self-service going forward.
 - [ ] **Import newer statements** (Chase checking + credit past Jan 5) — only
@@ -113,9 +125,11 @@ transaction. This same operation powers: consolidating the duplicates, building 
       M rules"** confirmation before applying (delete disabled for non-empty nodes).
 
 ### First jobs to run once the page exists
-- [ ] **Drop the 6 empty/stray "new" categories** (`Charity`, `Education`, `Home`,
-      `Housing`, `Personal`, `Pet`) — reassign the 2 stray Amazon txns into legacy
-      subcategories first, then delete. (Deferred from the Northwestern fix on purpose.)
+- [x] **Drop the 6 empty/stray "new" categories** (`Charity`, `Education`, `Home`,
+      `Housing`, `Personal`, `Pet`) — done 2026-06-02 via the API. Reassigned the 2 stray
+      Amazon txns first (Swiffer → `Shopping / Home`; IAMS dog food →
+      `Pet Care / Food/Supplies`), then deleted all 6. Taxonomy is back to the 17 legacy
+      categories with no orphaned subcategory rows.
 - [ ] **"Bills & Utilities" reorg** — create a `Bills & Utilities` category and move the
       recurring-bill subcategories into it (e.g. rent, gas/electric, wifi, taxes, car
       payment, **life insurance**). This is a cross-category move (pulls from
