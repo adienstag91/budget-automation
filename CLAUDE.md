@@ -248,10 +248,17 @@ When adding new normalization patterns, update `merchant_normalizer.py:normalize
 - Same CSV can be imported multiple times without duplicates
 
 ### Taxonomy Structure
-- 17 top-level categories defined in `data/taxonomy/taxonomy.json`
-- 110+ subcategories specific to actual spending patterns
-- Categories are referenced by foreign key in rules and transactions
-- Adding new categories requires updating taxonomy.json and running database seed
+- **The DB is the source of truth** for the category tree
+  (`taxonomy_categories` / `taxonomy_subcategories`). `data/taxonomy/taxonomy.json`
+  and `budget_automation/tools/taxonomy_sync.py` are **deprecated/retired** (the JSON
+  drifted stale & partial) — do not run sync.
+- Manage the tree via the **Taxonomy page** (`/settings/taxonomy`) or the
+  `/api/taxonomy/*` endpoints in `api.py` (add / rename / move / merge / delete).
+  Structural edits cascade to `transactions` and `merchant_rules` in one DB
+  transaction and preserve `category_source` / `needs_review`.
+- Categories are referenced by foreign key in rules and transactions;
+  `taxonomy_categories.category` is the PRIMARY KEY (the name itself), so renames
+  re-point children manually (no `ON UPDATE CASCADE`).
 
 ### LLM Integration
 - Optional: Only used if `ANTHROPIC_API_KEY` is set in .env
@@ -308,5 +315,5 @@ Required in `.env`:
 1. **Port Conflict**: Database runs on 5433, not 5432 (to avoid local PostgreSQL conflicts)
 2. **merchant_detail Storage**: Detail is extracted by normalizer but stored in `merchant_raw` field in database
 3. **Rule Order**: Composite rules must have LOWER priority number than learned rules to be matched first
-4. **Taxonomy Changes**: Updating taxonomy.json requires re-running seed script
+4. **Taxonomy Changes**: Manage via the Taxonomy page / `/api/taxonomy/*` (DB is source of truth). `taxonomy.json` + `taxonomy_sync.py` are retired — do not edit the JSON or run sync.
 5. **Hash Collision**: Extremely rare, but SHA256 hash assumes no identical transactions on same day

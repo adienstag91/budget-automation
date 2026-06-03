@@ -77,6 +77,48 @@ class PivotResponse(BaseModel):
     grand_totals: dict[str, float]  # month -> total
 
 
+# ===== Taxonomy management request bodies =====
+class CategoryCreate(BaseModel):
+    category: str
+    is_income: bool = False
+    is_transfer: bool = False
+
+
+class CategoryUpdate(BaseModel):
+    new_category: Optional[str] = None
+    is_income: Optional[bool] = None
+    is_transfer: Optional[bool] = None
+    display_order: Optional[int] = None
+
+
+class CategoryMerge(BaseModel):
+    into: str
+
+
+class SubcategoryCreate(BaseModel):
+    category: str
+    subcategory: str
+
+
+class SubcategoryUpdate(BaseModel):
+    category: str          # current parent
+    subcategory: str       # current name
+    new_category: Optional[str] = None      # move to another parent
+    new_subcategory: Optional[str] = None    # rename
+
+
+class SubcategoryMerge(BaseModel):
+    category: str          # source parent
+    subcategory: str       # source name
+    into_subcategory: str
+    into_category: Optional[str] = None      # defaults to source parent
+
+
+class SubcategoryRef(BaseModel):
+    category: str
+    subcategory: str
+
+
 @app.get("/")
 def root():
     """Health check endpoint"""
@@ -726,6 +768,619 @@ def get_stats():
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Taxonomy management
+#
+# The DB is the source of truth for the category tree (taxonomy.json /
+# taxonomy_sync.py are retired). These endpoints add/rename/move/merge/delete
+# categories and subcategories and cascade every structural change to
+# `transactions` and `merchant_rules` in a single transaction.
+#
+# Key DB facts that drive the implementation:
+#   - taxonomy_categories.category is the PRIMARY KEY (the name itself), so a
+#     rename is: insert new row -> re-point children -> delete old row.
+#   - There is NO `ON UPDATE CASCADE` anywhere, hence the manual re-pointing.
+#   - taxonomy_subcategories.category -> taxonomy_categories : ON DELETE CASCADE
+#   - transactions.(category,subcategory) -> taxonomy_subcategories : SET NULL
+#   - merchant_rules.(category,subcategory) -> taxonomy_subcategories : RESTRICT
+#
+# Re-point UPDATEs deliberately leave category_source / category_confidence /
+# needs_review untouched: a structural relabel is not a manual recategorization.
+# ============================================================================
+
+
+def _counts(cursor, category: str, subcategory: Optional[str] = None):
+    """Return (txn_count, rule_count) for a category or a specific subcategory."""
+    if subcategory is None:
+        cursor.execute(
+            "SELECT COUNT(*) FROM transactions WHERE category = %s",
+            (category,),
+        )
+        txn_count = cursor.fetchone()[0]
+        cursor.execute(
+            "SELECT COUNT(*) FROM merchant_rules WHERE category = %s",
+            (category,),
+        )
+        rule_count = cursor.fetchone()[0]
+    else:
+        cursor.execute(
+            "SELECT COUNT(*) FROM transactions WHERE category = %s AND subcategory = %s",
+            (category, subcategory),
+        )
+        txn_count = cursor.fetchone()[0]
+        cursor.execute(
+            "SELECT COUNT(*) FROM merchant_rules WHERE category = %s AND subcategory = %s",
+            (category, subcategory),
+        )
+        rule_count = cursor.fetchone()[0]
+    return txn_count, rule_count
+
+
+@app.get("/api/taxonomy/tree")
+def get_taxonomy_tree():
+    """
+    Full category tree for the Taxonomy Management page: every category with
+    its subcategories, each annotated with txn_count / rule_count usage.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Per-(category,subcategory) usage counts.
+        cursor.execute("""
+            SELECT s.category, s.subcategory,
+                   COALESCE(t.txn_count, 0)  AS txn_count,
+                   COALESCE(r.rule_count, 0) AS rule_count
+            FROM taxonomy_subcategories s
+            LEFT JOIN (
+                SELECT category, subcategory, COUNT(*) AS txn_count
+                FROM transactions
+                GROUP BY category, subcategory
+            ) t ON t.category = s.category AND t.subcategory = s.subcategory
+            LEFT JOIN (
+                SELECT category, subcategory, COUNT(*) AS rule_count
+                FROM merchant_rules
+                GROUP BY category, subcategory
+            ) r ON r.category = s.category AND r.subcategory = s.subcategory
+            ORDER BY s.category, s.subcategory
+        """)
+        sub_rows = cursor.fetchall()
+
+        subs_by_cat = {}
+        for row in sub_rows:
+            subs_by_cat.setdefault(row["category"], []).append({
+                "subcategory": row["subcategory"],
+                "txn_count": row["txn_count"],
+                "rule_count": row["rule_count"],
+            })
+
+        # Categories with their own roll-up counts.
+        cursor.execute("""
+            SELECT c.category, c.display_order, c.is_income, c.is_transfer,
+                   COALESCE(t.txn_count, 0)  AS txn_count,
+                   COALESCE(r.rule_count, 0) AS rule_count
+            FROM taxonomy_categories c
+            LEFT JOIN (
+                SELECT category, COUNT(*) AS txn_count
+                FROM transactions
+                GROUP BY category
+            ) t ON t.category = c.category
+            LEFT JOIN (
+                SELECT category, COUNT(*) AS rule_count
+                FROM merchant_rules
+                GROUP BY category
+            ) r ON r.category = c.category
+            ORDER BY c.display_order, c.category
+        """)
+        cat_rows = cursor.fetchall()
+
+        categories = []
+        for row in cat_rows:
+            categories.append({
+                "category": row["category"],
+                "display_order": row["display_order"],
+                "is_income": row["is_income"],
+                "is_transfer": row["is_transfer"],
+                "txn_count": row["txn_count"],
+                "rule_count": row["rule_count"],
+                "subcategories": subs_by_cat.get(row["category"], []),
+            })
+
+        cursor.close()
+        conn.close()
+        return {"categories": categories}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ----- Category ops ---------------------------------------------------------
+
+@app.post("/api/taxonomy/categories")
+def create_category(body: CategoryCreate):
+    """Create a new category at display_order = MAX + 1."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_categories WHERE category = %s",
+            (body.category,),
+        )
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            raise HTTPException(
+                status_code=409, detail=f"Category '{body.category}' already exists"
+            )
+
+        cursor.execute("SELECT COALESCE(MAX(display_order), 0) FROM taxonomy_categories")
+        next_order = cursor.fetchone()[0] + 1
+
+        cursor.execute(
+            """
+            INSERT INTO taxonomy_categories
+                (category, display_order, is_income, is_transfer)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (body.category, next_order, body.is_income, body.is_transfer),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"category": body.category, "display_order": next_order,
+                "message": "Category created"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/taxonomy/categories/{category}")
+def update_category(category: str, body: CategoryUpdate):
+    """
+    Rename a category and/or set its flags/order. A rename re-points
+    subcategories, transactions and rules to the new name in one transaction.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT display_order, is_income, is_transfer FROM taxonomy_categories WHERE category = %s",
+            (category,),
+        )
+        existing = cursor.fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
+
+        cur_order, cur_income, cur_transfer = existing
+        new_name = body.new_category
+        renaming = new_name is not None and new_name != category
+
+        # Resolve final flag/order values (used by both rename and in-place edit).
+        final_order = body.display_order if body.display_order is not None else cur_order
+        final_income = body.is_income if body.is_income is not None else cur_income
+        final_transfer = body.is_transfer if body.is_transfer is not None else cur_transfer
+
+        if renaming:
+            cursor.execute(
+                "SELECT 1 FROM taxonomy_categories WHERE category = %s", (new_name,)
+            )
+            if cursor.fetchone():
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Category '{new_name}' already exists. Use merge instead.",
+                )
+            # insert target -> re-point children -> delete source, one txn.
+            cursor.execute(
+                """
+                INSERT INTO taxonomy_categories
+                    (category, display_order, is_income, is_transfer)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (new_name, final_order, final_income, final_transfer),
+            )
+            cursor.execute(
+                "UPDATE taxonomy_subcategories SET category = %s WHERE category = %s",
+                (new_name, category),
+            )
+            cursor.execute(
+                "UPDATE transactions SET category = %s WHERE category = %s",
+                (new_name, category),
+            )
+            cursor.execute(
+                "UPDATE merchant_rules SET category = %s WHERE category = %s",
+                (new_name, category),
+            )
+            cursor.execute(
+                "DELETE FROM taxonomy_categories WHERE category = %s", (category,)
+            )
+            result_name = new_name
+        else:
+            cursor.execute(
+                """
+                UPDATE taxonomy_categories
+                SET display_order = %s, is_income = %s, is_transfer = %s
+                WHERE category = %s
+                """,
+                (final_order, final_income, final_transfer, category),
+            )
+            result_name = category
+
+        conn.commit()
+        return {"category": result_name, "message": "Category updated"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.post("/api/taxonomy/categories/{category}/merge")
+def merge_category(category: str, body: CategoryMerge):
+    """
+    Merge `category` into `body.into`: move all subcategories (creating missing
+    target rows), re-point transactions/rules, then delete the source category.
+    """
+    into = body.into
+    if into == category:
+        raise HTTPException(status_code=400, detail="Cannot merge a category into itself")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM taxonomy_categories WHERE category = %s", (category,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
+        cursor.execute("SELECT 1 FROM taxonomy_categories WHERE category = %s", (into,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail=f"Target category '{into}' not found")
+
+        # Ensure target (into, subcat) rows exist for every source subcat.
+        cursor.execute(
+            "SELECT subcategory FROM taxonomy_subcategories WHERE category = %s",
+            (category,),
+        )
+        src_subs = [r[0] for r in cursor.fetchall()]
+        for sub in src_subs:
+            cursor.execute(
+                """
+                INSERT INTO taxonomy_subcategories (category, subcategory)
+                VALUES (%s, %s)
+                ON CONFLICT (category, subcategory) DO NOTHING
+                """,
+                (into, sub),
+            )
+
+        # Re-point transactions and rules to the target category (keep subcategory).
+        cursor.execute(
+            "UPDATE transactions SET category = %s WHERE category = %s",
+            (into, category),
+        )
+        cursor.execute(
+            "UPDATE merchant_rules SET category = %s WHERE category = %s",
+            (into, category),
+        )
+
+        # Delete source category; its now-orphaned subcat rows cascade.
+        cursor.execute("DELETE FROM taxonomy_categories WHERE category = %s", (category,))
+
+        conn.commit()
+        return {"category": into, "message": f"Merged '{category}' into '{into}'"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.delete("/api/taxonomy/categories/{category}")
+def delete_category(category: str):
+    """Delete a category only if it has zero transactions and zero rules."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM taxonomy_categories WHERE category = %s", (category,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
+
+        txn_count, rule_count = _counts(cursor, category)
+        if txn_count > 0 or rule_count > 0:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Category '{category}' has {txn_count} transactions and "
+                    f"{rule_count} rules. Merge it into another category instead."
+                ),
+            )
+
+        # Empty: subcategory rows cascade on delete.
+        cursor.execute("DELETE FROM taxonomy_categories WHERE category = %s", (category,))
+        conn.commit()
+        return {"category": category, "message": "Category deleted"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# ----- Subcategory ops ------------------------------------------------------
+
+@app.post("/api/taxonomy/subcategories")
+def create_subcategory(body: SubcategoryCreate):
+    """Create a new (category, subcategory) pair."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_categories WHERE category = %s", (body.category,)
+        )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404, detail=f"Category '{body.category}' not found"
+            )
+
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (body.category, body.subcategory),
+        )
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=409,
+                detail=f"Subcategory '{body.category} / {body.subcategory}' already exists",
+            )
+
+        cursor.execute(
+            "INSERT INTO taxonomy_subcategories (category, subcategory) VALUES (%s, %s)",
+            (body.category, body.subcategory),
+        )
+        conn.commit()
+        return {"category": body.category, "subcategory": body.subcategory,
+                "message": "Subcategory created"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.put("/api/taxonomy/subcategories")
+def update_subcategory(body: SubcategoryUpdate):
+    """
+    Rename a subcategory (same parent) and/or move it to a new parent. Ensures
+    the target row exists, re-points transactions/rules, deletes the old row.
+    """
+    target_cat = body.new_category if body.new_category is not None else body.category
+    target_sub = body.new_subcategory if body.new_subcategory is not None else body.subcategory
+
+    if target_cat == body.category and target_sub == body.subcategory:
+        raise HTTPException(status_code=400, detail="No change requested")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (body.category, body.subcategory),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Subcategory '{body.category} / {body.subcategory}' not found",
+            )
+
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_categories WHERE category = %s", (target_cat,)
+        )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404, detail=f"Target category '{target_cat}' not found"
+            )
+
+        # If the target already exists and holds data, this is a merge.
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (target_cat, target_sub),
+        )
+        target_exists = cursor.fetchone() is not None
+        if target_exists:
+            tcount, rcount = _counts(cursor, target_cat, target_sub)
+            if tcount > 0 or rcount > 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Target '{target_cat} / {target_sub}' already exists with data. "
+                        "Use merge instead."
+                    ),
+                )
+
+        # Ensure target row exists, re-point, delete source.
+        cursor.execute(
+            """
+            INSERT INTO taxonomy_subcategories (category, subcategory)
+            VALUES (%s, %s)
+            ON CONFLICT (category, subcategory) DO NOTHING
+            """,
+            (target_cat, target_sub),
+        )
+        cursor.execute(
+            """
+            UPDATE transactions SET category = %s, subcategory = %s
+            WHERE category = %s AND subcategory = %s
+            """,
+            (target_cat, target_sub, body.category, body.subcategory),
+        )
+        cursor.execute(
+            """
+            UPDATE merchant_rules SET category = %s, subcategory = %s
+            WHERE category = %s AND subcategory = %s
+            """,
+            (target_cat, target_sub, body.category, body.subcategory),
+        )
+        cursor.execute(
+            "DELETE FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (body.category, body.subcategory),
+        )
+
+        conn.commit()
+        return {"category": target_cat, "subcategory": target_sub,
+                "message": "Subcategory updated"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.post("/api/taxonomy/subcategories/merge")
+def merge_subcategory(body: SubcategoryMerge):
+    """Merge a subcategory into a sibling (or a subcategory under another parent)."""
+    into_cat = body.into_category if body.into_category is not None else body.category
+    into_sub = body.into_subcategory
+
+    if into_cat == body.category and into_sub == body.subcategory:
+        raise HTTPException(status_code=400, detail="Cannot merge a subcategory into itself")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (body.category, body.subcategory),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Source '{body.category} / {body.subcategory}' not found",
+            )
+
+        # Ensure target exists (create if missing under an existing category).
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_categories WHERE category = %s", (into_cat,)
+        )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404, detail=f"Target category '{into_cat}' not found"
+            )
+        cursor.execute(
+            """
+            INSERT INTO taxonomy_subcategories (category, subcategory)
+            VALUES (%s, %s)
+            ON CONFLICT (category, subcategory) DO NOTHING
+            """,
+            (into_cat, into_sub),
+        )
+
+        cursor.execute(
+            """
+            UPDATE transactions SET category = %s, subcategory = %s
+            WHERE category = %s AND subcategory = %s
+            """,
+            (into_cat, into_sub, body.category, body.subcategory),
+        )
+        cursor.execute(
+            """
+            UPDATE merchant_rules SET category = %s, subcategory = %s
+            WHERE category = %s AND subcategory = %s
+            """,
+            (into_cat, into_sub, body.category, body.subcategory),
+        )
+        cursor.execute(
+            "DELETE FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (body.category, body.subcategory),
+        )
+
+        conn.commit()
+        return {
+            "category": into_cat,
+            "subcategory": into_sub,
+            "message": f"Merged '{body.category} / {body.subcategory}' into "
+                       f"'{into_cat} / {into_sub}'",
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.delete("/api/taxonomy/subcategories")
+def delete_subcategory(body: SubcategoryRef):
+    """Delete a subcategory only if it has zero transactions and zero rules."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT 1 FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (body.category, body.subcategory),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Subcategory '{body.category} / {body.subcategory}' not found",
+            )
+
+        txn_count, rule_count = _counts(cursor, body.category, body.subcategory)
+        if txn_count > 0 or rule_count > 0:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Subcategory '{body.category} / {body.subcategory}' has "
+                    f"{txn_count} transactions and {rule_count} rules. Merge it instead."
+                ),
+            )
+
+        cursor.execute(
+            "DELETE FROM taxonomy_subcategories WHERE category = %s AND subcategory = %s",
+            (body.category, body.subcategory),
+        )
+        conn.commit()
+        return {"category": body.category, "subcategory": body.subcategory,
+                "message": "Subcategory deleted"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
 
 
 if __name__ == "__main__":

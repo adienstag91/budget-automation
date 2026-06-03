@@ -83,27 +83,34 @@ cleaning these up so it goes through this page rather than hand-written SQL.
 transaction. This same operation powers: consolidating the duplicates, building a
 "Bills & Utilities" reorg, and any future reorganization.
 
-### Backend
-- [ ] **Category/subcategory tree CRUD** — add / rename / move / merge / delete.
-- [ ] **Cascading update endpoints** (single DB transaction each):
+> **Source of truth:** the **DB is authoritative** for the taxonomy.
+> `data/taxonomy/taxonomy.json` + `budget_automation/tools/taxonomy_sync.py` are
+> **retired** (the JSON had drifted stale/partial) — do not run sync anymore; manage
+> the tree through this page / the `/api/taxonomy/*` endpoints.
+
+### Backend (done 2026-06-02)
+- [x] **Category/subcategory tree CRUD** — add / rename / move / merge / delete
+      (`/api/taxonomy/categories*`, `/api/taxonomy/subcategories*` in `api.py`).
+- [x] **Cascading update endpoints** (single DB transaction each):
       - rename `(category)` → updates `transactions.category`,
         `taxonomy_subcategories.category`, `merchant_rules.category`.
-      - rename `(category, subcategory)` → updates `transactions` + `merchant_rules`
+      - rename/move `(category, subcategory)` → updates `transactions` + `merchant_rules`
         composite refs.
       - merge B into A → re-point all txns/rules from B to A, then delete B.
       - move a subcategory to a different parent category.
-      Mind the FKs: `transactions` and `merchant_rules` both have composite FKs to
-      `taxonomy_subcategories(category, subcategory)`, and
-      `taxonomy_subcategories.category` → `taxonomy_categories` is `ON DELETE CASCADE`.
-      Must re-point/insert targets **before** deleting a source to avoid orphans.
-- [ ] **Guardrails** — block delete of a non-empty (sub)category unless a merge target
-      is given; preview affected-row counts before applying; do it transactionally so a
-      partial failure rolls back.
+      FKs handled: `taxonomy_categories.category` is the PRIMARY KEY (no
+      `ON UPDATE CASCADE`), so renames insert the target, re-point children, then
+      delete the source — all in one txn. Re-points **preserve**
+      `category_source` / `category_confidence` / `needs_review` (a structural relabel
+      is not a manual recategorization).
+- [x] **Guardrails** — delete of a non-empty (sub)category returns 409 ("merge instead");
+      `GET /api/taxonomy/tree` returns per-node `txn_count` / `rule_count` for the
+      "affects N" preview; every mutation is transactional with rollback.
 
-### Frontend (new page in the app shell — the `/taxonomy` route stub already exists conceptually)
-- [ ] Tree view of categories → subcategories with txn counts per node.
-- [ ] Add / rename / move / merge / delete actions with an **"affects N transactions,
-      M rules"** confirmation before applying.
+### Frontend (done 2026-06-02 — `/settings/taxonomy` under a new **Settings** nav section)
+- [x] Tree view of categories → subcategories with txn/rule counts per node.
+- [x] Add / rename / move / merge / delete actions with an **"affects N transactions,
+      M rules"** confirmation before applying (delete disabled for non-empty nodes).
 
 ### First jobs to run once the page exists
 - [ ] **Drop the 6 empty/stray "new" categories** (`Charity`, `Education`, `Home`,

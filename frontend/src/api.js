@@ -102,6 +102,86 @@ export async function createRule({
   return res.json();
 }
 
+// ===== Taxonomy management =====
+// Shared helper for the mutating taxonomy endpoints (JSON body in, JSON out,
+// API error text surfaced). GET goes through getJSON above.
+async function sendJSON(url, method, body) {
+  const opts = { method };
+  if (body !== undefined) {
+    opts.headers = { "Content-Type": "application/json" };
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const data = await res.json();
+      detail = data.detail || JSON.stringify(data);
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    throw new Error(detail || `Request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+// Full category tree with per-node txn/rule usage counts.
+export function fetchTaxonomyTree() {
+  return getJSON(`/api/taxonomy/tree`);
+}
+
+export function createCategory({ category, isIncome = false, isTransfer = false }) {
+  return sendJSON(`/api/taxonomy/categories`, "POST", {
+    category,
+    is_income: isIncome,
+    is_transfer: isTransfer,
+  });
+}
+
+// Rename and/or set flags/order. Pass newCategory to rename.
+export function updateCategory(category, { newCategory, isIncome, isTransfer, displayOrder } = {}) {
+  const body = {};
+  if (newCategory != null) body.new_category = newCategory;
+  if (isIncome != null) body.is_income = isIncome;
+  if (isTransfer != null) body.is_transfer = isTransfer;
+  if (displayOrder != null) body.display_order = displayOrder;
+  return sendJSON(`/api/taxonomy/categories/${encodeURIComponent(category)}`, "PUT", body);
+}
+
+export function mergeCategory(category, into) {
+  return sendJSON(
+    `/api/taxonomy/categories/${encodeURIComponent(category)}/merge`,
+    "POST",
+    { into }
+  );
+}
+
+export function deleteCategory(category) {
+  return sendJSON(`/api/taxonomy/categories/${encodeURIComponent(category)}`, "DELETE");
+}
+
+export function createSubcategory({ category, subcategory }) {
+  return sendJSON(`/api/taxonomy/subcategories`, "POST", { category, subcategory });
+}
+
+// Rename (same parent) and/or move (new parent).
+export function updateSubcategory({ category, subcategory, newCategory, newSubcategory }) {
+  const body = { category, subcategory };
+  if (newCategory != null) body.new_category = newCategory;
+  if (newSubcategory != null) body.new_subcategory = newSubcategory;
+  return sendJSON(`/api/taxonomy/subcategories`, "PUT", body);
+}
+
+export function mergeSubcategory({ category, subcategory, intoSubcategory, intoCategory }) {
+  const body = { category, subcategory, into_subcategory: intoSubcategory };
+  if (intoCategory != null) body.into_category = intoCategory;
+  return sendJSON(`/api/taxonomy/subcategories/merge`, "POST", body);
+}
+
+export function deleteSubcategory({ category, subcategory }) {
+  return sendJSON(`/api/taxonomy/subcategories`, "DELETE", { category, subcategory });
+}
+
 export function fmtMonthLabel(ym) {
   // "2025-11" -> "Nov 2025"
   const [y, m] = ym.split("-");
