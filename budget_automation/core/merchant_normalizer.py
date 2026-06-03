@@ -73,6 +73,10 @@ MERCHANT_ALIASES = {
     # Transit
     r'MTA\s*\*?\s*NYCT': 'MTA SUBWAY',
     r'MTA\s*\*?\s*LIRR': 'MTA LIRR',
+
+    # Insurance / ACH billers that report with trailing transaction metadata
+    # (e.g. "NORTHWESTERN MU  ISA PYMENT  PPD ID: ...") -> "NORTHWESTERN"
+    r'NORTHWESTERN\s+MU': 'NORTHWESTERN',
 }
 
 def normalize_merchant(raw_description: str) -> Tuple[str, Optional[str]]:
@@ -207,6 +211,10 @@ def test_normalization():
         # Internal
         ("CHASE CREDIT CRD AUTOPAY                    PPD ID: 4760039224", "CHASE CREDIT CARD PAYMENT", None),
         ("INTEREST PAYMENT", "BANK INTEREST", None),
+
+        # Insurance / ACH billers with trailing metadata
+        ("NORTHWESTERN", "NORTHWESTERN", None),
+        ("NORTHWESTERN MU  ISA PYMENT                 PPD ID: 9000596067", "NORTHWESTERN", None),
     ]
     
     print("Testing merchant normalization...")
