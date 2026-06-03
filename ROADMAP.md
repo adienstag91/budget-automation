@@ -66,9 +66,19 @@ There were two unrelated things confusingly both called "tag":
 
 ## Phase 1 — Core View Power (quick wins, high value)
 Goal: slice the pivot the way you actually think.
-- [ ] **Income vs expense filter** (nearly free — `direction` already in DB)
+- [x] **Income vs expense filter** (done 2026-06-02) — pivot `view` param
+      (`expense` default / `income` / `all`) that honors the `is_transfer` /
+      `is_income` / `exclude_from_budget` flags in SQL, so transfers/payments no
+      longer inflate spending. All three views reconcile exactly to raw SQL.
 - [ ] **Search / view by category, subcategory, or merchant** (reuses drilldown)
 - [ ] **Conditional formatting** — highlight unusually high month cells
+- [ ] **Edit an individual transaction's date** — recurring bills often land a day
+      early/late around weekends + month boundaries (e.g. last-day-of-month vs
+      first-of-next), which shows up as one month double-billed and the next month
+      empty (seen on electricity). Let a date be corrected from the drilldown /
+      transactions view so the month it lands in is right. *Heads-up:* `txn_date`
+      feeds `source_row_hash` (dedup), so re-hash (or exclude date from the hash) on
+      edit, or a re-import of the same row could duplicate it — note in TECH_DEBT.
 
 ## Phase 2 — Tagging (deprioritized — only if you want it)
 Tagging is **not a priority**. The `tags TEXT[]` column already exists (empty)
@@ -154,6 +164,12 @@ Goal: understand trends, not just totals.
 - [ ] Fix the duplicate-detection bug (TECH_DEBT) **before** bulk imports
 - [ ] Commit/push to GitHub so work is backed up off the laptop
 - [ ] Eventually: free hosting (Vercel/Netlify + deployed API) to retire Lovable cost
+- [ ] **(nice-to-have) "Show the SQL" inspector** — an expandable modal on data-heavy
+      pages (pivot, transactions, drilldown) that shows the actual query used to fetch
+      the data, and for mutations (recategorize / tag / taxonomy edits) the
+      statement(s) that ran. For learning + troubleshooting. Likely: API returns the
+      rendered SQL (params interpolated, read-only/sanitized) alongside results behind
+      a `?debug=1` flag, and the FE shows it in a collapsible panel.
 
 ---
 
