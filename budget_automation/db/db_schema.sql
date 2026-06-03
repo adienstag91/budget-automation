@@ -81,15 +81,15 @@ CREATE TABLE transactions (
     category VARCHAR(100) REFERENCES taxonomy_categories(category),
     subcategory VARCHAR(100),
     
-    -- Tagging metadata
-    tag_source VARCHAR(50), -- 'rule', 'llm', 'manual', 'learned'
-    tag_confidence DECIMAL(3, 2), -- 0.00 to 1.00
+    -- Categorization metadata (how the category/subcategory was assigned)
+    category_source VARCHAR(50), -- 'rule', 'llm', 'manual', 'venmo_expanded', 'none'
+    category_confidence DECIMAL(3, 2), -- 0.00 to 1.00
     needs_review BOOLEAN DEFAULT FALSE,
-    
+
     -- Special flags
     is_return BOOLEAN DEFAULT FALSE,
     exclude_from_budget BOOLEAN DEFAULT FALSE,
-    trip_tag VARCHAR(100), -- 'Europe', 'Honeymoon', etc.
+    tags TEXT[] DEFAULT '{}', -- manual, ad-hoc tags (e.g. Hawaii, anniversary); multiple per txn
     
     -- Notes
     notes TEXT,
@@ -112,7 +112,7 @@ CREATE INDEX idx_transactions_dates ON transactions(txn_date, post_date);
 CREATE INDEX idx_transactions_merchant_norm ON transactions(merchant_norm);
 CREATE INDEX idx_transactions_category ON transactions(category, subcategory);
 CREATE INDEX idx_transactions_needs_review ON transactions(needs_review) WHERE needs_review = TRUE;
-CREATE INDEX idx_transactions_trip_tag ON transactions(trip_tag) WHERE trip_tag IS NOT NULL;
+CREATE INDEX idx_transactions_tags ON transactions USING GIN (tags);
 CREATE INDEX idx_transactions_exclude_budget ON transactions(exclude_from_budget) WHERE exclude_from_budget = TRUE;
 
 -- ============================================================================
@@ -161,7 +161,7 @@ CREATE TABLE tag_overrides (
     -- Old values
     old_category VARCHAR(100),
     old_subcategory VARCHAR(100),
-    old_tag_source VARCHAR(50),
+    old_category_source VARCHAR(50),
     
     -- New values
     new_category VARCHAR(100) NOT NULL,
@@ -252,8 +252,9 @@ CREATE TRIGGER update_accounts_updated_at
 COMMENT ON TABLE transactions IS 'Core transaction table containing all spending/income data';
 COMMENT ON COLUMN transactions.source_row_hash IS 'SHA256 hash of raw CSV row for deduplication';
 COMMENT ON COLUMN transactions.merchant_norm IS 'Normalized merchant name for matching rules';
-COMMENT ON COLUMN transactions.tag_confidence IS 'Confidence score from categorization (0.00-1.00)';
-COMMENT ON COLUMN transactions.trip_tag IS 'Optional tag for trips (Europe, Honeymoon, etc) to filter from budget';
+COMMENT ON COLUMN transactions.category_source IS 'How the category was assigned: rule, llm, manual, venmo_expanded, none';
+COMMENT ON COLUMN transactions.category_confidence IS 'Confidence score from categorization (0.00-1.00)';
+COMMENT ON COLUMN transactions.tags IS 'Manual, ad-hoc tags (e.g. Hawaii, anniversary). Multiple per txn.';
 COMMENT ON COLUMN transactions.exclude_from_budget IS 'If TRUE, exclude from regular budget analysis';
 
 COMMENT ON TABLE merchant_rules IS 'Categorization rules for automatic tagging';

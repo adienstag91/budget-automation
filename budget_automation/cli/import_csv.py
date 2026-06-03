@@ -40,7 +40,7 @@ def insert_transactions(conn, transactions: list):
                     description_raw, merchant_raw, merchant_norm, merchant_detail,
                     amount, currency, direction, type, is_return,
                     category, subcategory,
-                    tag_source, tag_confidence, needs_review,
+                    category_source, category_confidence, needs_review,
                     notes, memo, created_by
                 )
                 VALUES (
@@ -49,7 +49,7 @@ def insert_transactions(conn, transactions: list):
                     %(description_raw)s, %(merchant_raw)s, %(merchant_norm)s, %(merchant_detail)s,
                     %(amount)s, %(currency)s, %(direction)s, %(type)s, %(is_return)s,
                     %(category)s, %(subcategory)s,
-                    %(tag_source)s, %(tag_confidence)s, %(needs_review)s,
+                    %(category_source)s, %(category_confidence)s, %(needs_review)s,
                     %(notes)s, %(memo)s, %(created_by)s
                 )
             """, txn)
@@ -173,7 +173,7 @@ def main():
             if txn.merchant_detail:
                 merchant += f" ({txn.merchant_detail})"
             print(f"{status} {i:2d}. {merchant:<40} → {txn.category} / {txn.subcategory}")
-            print(f"       ${abs(txn.amount):>7.2f}  {txn.tag_source:<8}  {txn.tag_confidence:.0%}")
+            print(f"       ${abs(txn.amount):>7.2f}  {txn.category_source:<8}  {txn.category_confidence:.0%}")
         
         if len(categorized) > 10:
             print(f"       ... and {len(categorized) - 10} more")
@@ -213,8 +213,8 @@ def main():
                     'is_return': txn.is_return,
                     'category': txn.category,
                     'subcategory': txn.subcategory,
-                    'tag_source': txn.tag_source,
-                    'tag_confidence': txn.tag_confidence,
+                    'category_source': txn.category_source,
+                    'category_confidence': txn.category_confidence,
                     'needs_review': txn.needs_review,
                     'notes': txn.notes,
                     'memo': orig_txn.get('memo'),

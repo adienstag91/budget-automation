@@ -17,8 +17,8 @@ class CategorizationResult:
     """Result of categorization attempt"""
     category: Optional[str]
     subcategory: Optional[str]
-    tag_source: str  # 'rule', 'llm', 'manual'
-    tag_confidence: float  # 0.0 to 1.0
+    category_source: str  # 'rule', 'llm', 'manual'
+    category_confidence: float  # 0.0 to 1.0
     needs_review: bool
     matched_rule_id: Optional[int] = None
     rationale: Optional[str] = None
@@ -139,8 +139,8 @@ class RuleMatcher:
                 return CategorizationResult(
                     category=rule['category'],
                     subcategory=rule['subcategory'],
-                    tag_source='rule',
-                    tag_confidence=1.0,  # Rules are 100% confident
+                    category_source='rule',
+                    category_confidence=1.0,  # Rules are 100% confident
                     needs_review=False,
                     matched_rule_id=rule['rule_id'],
                     rationale=rationale,
@@ -151,8 +151,8 @@ class RuleMatcher:
         return CategorizationResult(
             category='Uncategorized',
             subcategory='Needs Review',
-            tag_source='none',
-            tag_confidence=0.0,
+            category_source='none',
+            category_confidence=0.0,
             needs_review=True,
             rationale='No matching rule found',
         )

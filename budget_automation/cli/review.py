@@ -137,8 +137,8 @@ def update_transaction(conn, txn_id: int, category: str, subcategory: str):
         SET category = %s,
             subcategory = %s,
             needs_review = FALSE,
-            tag_source = 'manual',
-            tag_confidence = 1.0
+            category_source = 'manual',
+            category_confidence = 1.0
         WHERE txn_id = %s
     """, (category, subcategory, txn_id))
     

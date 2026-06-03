@@ -93,7 +93,7 @@
 - Dashboard shows "Source" column but it's unclear what it represents
 - Database has 3 similar fields:
   - `source`: Data source (chase_credit, amazon_enrichment, venmo_enrichment)
-  - `tag_source`: Categorization method (rule, llm, manual, venmo_expanded)
+  - `category_source`: Categorization method (rule, llm, manual, venmo_expanded)
   - `created_by`: Process that created it (import, amazon_enrichment, venmo_enrichment)
 
 **Impact:**
