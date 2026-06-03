@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import PivotPage from "./PivotPage.jsx";
 import ReviewQueuePage from "./ReviewQueuePage.jsx";
+import TaxonomyPage from "./TaxonomyPage.jsx";
 import { fetchStats } from "./api.js";
 
 // Simple placeholder for pages not built yet.
@@ -55,6 +56,11 @@ function Sidebar({ reviewCount, onReviewCountChange }) {
       <NavLink to="/import" className={link}>
         Import
       </NavLink>
+
+      <div className="sidebar-section">Settings</div>
+      <NavLink to="/settings/taxonomy" className={link}>
+        Taxonomy
+      </NavLink>
     </nav>
   );
 }
@@ -86,6 +92,7 @@ export default function AppShell() {
               element={<Placeholder name="Transactions" />}
             />
             <Route path="/import" element={<Placeholder name="Import" />} />
+            <Route path="/settings/taxonomy" element={<TaxonomyPage />} />
             <Route path="*" element={<Navigate to="/pivot" replace />} />
           </Routes>
         </main>

@@ -552,3 +552,146 @@ body {
   font-size: 13px;
   padding: 8px 20px;
 }
+
+/* ===== Sidebar section header (e.g. Settings) ===== */
+.sidebar-section {
+  margin-top: 16px;
+  padding: 6px 20px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ===== Taxonomy management ===== */
+.tax-tree {
+  max-width: 860px;
+}
+
+.tax-cat {
+  margin-bottom: 6px;
+}
+
+.tax-cat-row,
+.tax-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  min-height: 38px;
+}
+
+.tax-cat-row {
+  background: #fafbfc;
+}
+
+.tax-subs {
+  margin-left: 22px;
+}
+
+.caret-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 2px;
+  width: 18px;
+}
+
+.tax-name {
+  font-weight: 600;
+}
+.tax-name.sub {
+  font-weight: 400;
+}
+
+.tax-count {
+  font-size: 11px;
+  color: var(--muted);
+  background: #f0f2f5;
+  border-radius: 10px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.tax-flag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid #c7d7fb;
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.tax-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tax-actions button,
+.confirm button {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tax-actions button.ghost,
+.confirm button.ghost {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--border);
+}
+.tax-actions button.ghost:hover:not(:disabled),
+.confirm button.ghost:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.tax-actions button.danger {
+  color: var(--negative);
+  border-color: #f3c2c2;
+}
+.tax-actions button.danger:hover:not(:disabled) {
+  background: #fdeaea;
+}
+
+.tax-actions button:disabled,
+.confirm button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.add-sub {
+  margin: 2px 0 8px;
+}
+
+/* Inline confirm / edit dialog inside a row */
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.confirm-text {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.confirm select {
+  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
