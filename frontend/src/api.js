@@ -12,10 +12,12 @@ async function getJSON(url) {
 }
 
 // Pivot table data: categories -> subcategories -> { month: amount }
-export function fetchPivot({ monthsLimit = 12, startDate, endDate } = {}) {
+// view: "expense" (default, drops transfers) | "income" | "all" (raw, no flag filter)
+export function fetchPivot({ monthsLimit = 12, startDate, endDate, view = "expense" } = {}) {
   const params = new URLSearchParams({
     include_subcategories: "true",
     months_limit: String(monthsLimit),
+    view,
   });
   if (startDate) params.set("start_date", startDate);
   if (endDate) params.set("end_date", endDate);

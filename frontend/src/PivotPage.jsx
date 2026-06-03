@@ -39,6 +39,7 @@ function resolveRange(range, custom) {
 export default function PivotPage() {
   const [range, setRange] = useState("last6");
   const [custom, setCustom] = useState({ start: "", end: "" });
+  const [view, setView] = useState("expense"); // expense | income | all
   const [pivot, setPivot] = useState(null);
   const [taxonomy, setTaxonomy] = useState({});
   const [selection, setSelection] = useState(null);
@@ -49,11 +50,11 @@ export default function PivotPage() {
     setLoading(true);
     setError(null);
     const { monthsLimit, startDate, endDate } = resolveRange(range, custom);
-    fetchPivot({ monthsLimit, startDate, endDate })
+    fetchPivot({ monthsLimit, startDate, endDate, view })
       .then((data) => setPivot(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [range, custom]);
+  }, [range, custom, view]);
 
   useEffect(() => {
     loadPivot();
@@ -83,6 +84,14 @@ export default function PivotPage() {
             <option value="ytd">YTD</option>
             <option value="lastyear">Last Year</option>
             <option value="custom">Custom range</option>
+          </select>
+        </label>
+        <label>
+          View
+          <select value={view} onChange={(e) => setView(e.target.value)}>
+            <option value="expense">Expenses (no transfers)</option>
+            <option value="income">Income</option>
+            <option value="all">All outflows (raw)</option>
           </select>
         </label>
         {range === "custom" && (
@@ -119,7 +128,8 @@ export default function PivotPage() {
         <div className="spacer" />
         {pivot && (
           <div className="stat">
-            Spending shown: <b>{fmtCurrency(grandTotal)}</b> across{" "}
+            {view === "income" ? "Income shown" : "Spending shown"}:{" "}
+            <b>{fmtCurrency(grandTotal)}</b> across{" "}
             <b>{pivot.categories.length}</b> categories
           </div>
         )}
