@@ -140,19 +140,19 @@ def get_pivot_data(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     include_subcategories: bool = Query(False, description="Include subcategory breakdown"),
     months_limit: int = Query(12, description="Number of recent months to include"),
-    view: str = Query("expense", description="expense | income | all"),
+    view: str = Query("spending", description="spending | income | everything"),
 ):
     """
     Get pivot table data with categories and monthly spending.
 
-    `view` controls what's counted:
-      - expense (default): outflows only (direction='debit'), with categories
-        flagged is_transfer excluded and exclude_from_budget txns dropped — this
-        is real spending.
-      - income: inflows into is_income categories (direction='credit',
-        exclude_from_budget dropped).
-      - all: every categorized outflow, no flag filtering (reconciliation / raw view,
-        matches the original pivot behavior).
+    `view` controls what's counted (cells are NET, so refunds offset spending):
+      - spending (default): real spending — drops income, transfers/payments
+        (incl. credit-card payments) and exclude_from_budget txns. Both
+        directions kept so refunds net against the category. Outflows positive.
+      - income: inflows into is_income categories (exclude_from_budget dropped).
+        Inflows positive.
+      - everything: every transaction, both directions, no flag filtering.
+        Net per category (outflows positive, inflows negative) = cash flow.
     """
     try:
         conn = get_db_connection()
@@ -160,13 +160,25 @@ def get_pivot_data(
 
         # Build query for category-level data. LEFT JOIN the taxonomy so we can
         # honor the per-category is_income / is_transfer flags.
-        query = """
+        #
+        # Each cell is a NET amount so refunds offset spending. The sign points
+        # the natural direction positive per view:
+        #   - income: inflows positive  -> credit - debit
+        #   - spending / everything: outflows positive -> debit - credit
+        if view == "income":
+            net_expr = ("COALESCE(SUM(t.amount) FILTER (WHERE t.direction = 'credit'), 0)"
+                        " - COALESCE(SUM(t.amount) FILTER (WHERE t.direction = 'debit'), 0)")
+        else:
+            net_expr = ("COALESCE(SUM(t.amount) FILTER (WHERE t.direction = 'debit'), 0)"
+                        " - COALESCE(SUM(t.amount) FILTER (WHERE t.direction = 'credit'), 0)")
+
+        query = f"""
             WITH monthly_spending AS (
                 SELECT
                     DATE_TRUNC('month', t.txn_date) AS month,
                     t.category,
                     t.subcategory,
-                    SUM(t.amount) AS total_spent,
+                    {net_expr} AS total_spent,
                     COUNT(*) AS transaction_count
                 FROM transactions t
                 LEFT JOIN taxonomy_categories tc ON tc.category = t.category
@@ -181,14 +193,16 @@ def get_pivot_data(
                     AND COALESCE(tc.is_income, FALSE) = TRUE
                     AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
             """
-        elif view == "all":
-            # Raw / reconciliation view: outflows, no flag filtering (original behavior).
-            query += " AND t.direction = 'debit'"
+        elif view == "everything":
+            # Truly everything: income + all outflows, both directions, no flag
+            # filtering. Net per cell (outflows minus inflows).
+            pass
         else:
-            # Default "expense": real spending — outflows, drop transfers/payments
-            # and anything explicitly excluded from the budget.
+            # Default "spending": real spending — drop income & transfers/payments
+            # (incl. credit-card payments) and anything excluded from the budget.
+            # Both directions kept so refunds net against spending.
             query += """
-                    AND t.direction = 'debit'
+                    AND COALESCE(tc.is_income, FALSE) = FALSE
                     AND COALESCE(tc.is_transfer, FALSE) = FALSE
                     AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
             """
