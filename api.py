@@ -17,6 +17,13 @@ from pydantic import BaseModel
 import os
 import tempfile
 
+# Load .env so the API process has ANTHROPIC_API_KEY (LLM categorization) and
+# DB_* regardless of how uvicorn was launched. Without this, LLMCategorizer
+# silently disables and imports categorize 0 transactions via the LLM.
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = FastAPI(title="Budget Pivot API", version="1.0.0")
 
 # Enable CORS for your frontend (Lovable will need this)
