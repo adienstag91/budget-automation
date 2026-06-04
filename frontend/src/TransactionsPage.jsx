@@ -19,6 +19,8 @@ const EMPTY_FILTERS = {
   direction: "",
   dateFrom: "",
   dateTo: "",
+  amountMin: "",
+  amountMax: "",
 };
 
 // The Transactions cleanup page. Filter / search / sort across every
@@ -56,6 +58,23 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
     return () => clearTimeout(debounceRef.current);
   }, [searchInput]);
 
+  // Debounce the min/max $ amount inputs the same way (typed values).
+  const [amountMinInput, setAmountMinInput] = useState("");
+  const [amountMaxInput, setAmountMaxInput] = useState("");
+  const amtDebounceRef = useRef(null);
+  useEffect(() => {
+    if (amtDebounceRef.current) clearTimeout(amtDebounceRef.current);
+    amtDebounceRef.current = setTimeout(() => {
+      setFilters((f) => ({
+        ...f,
+        amountMin: amountMinInput,
+        amountMax: amountMaxInput,
+      }));
+      setOffset(0);
+    }, 400);
+    return () => clearTimeout(amtDebounceRef.current);
+  }, [amountMinInput, amountMaxInput]);
+
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -67,6 +86,8 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
       direction: filters.direction || undefined,
       dateFrom: filters.dateFrom || undefined,
       dateTo: filters.dateTo || undefined,
+      amountMin: filters.amountMin || undefined,
+      amountMax: filters.amountMax || undefined,
       sortBy: sort.by,
       sortDir: sort.dir,
       limit: PAGE_SIZE,
@@ -101,6 +122,8 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
   function clearFilters() {
     setFilters(EMPTY_FILTERS);
     setSearchInput("");
+    setAmountMinInput("");
+    setAmountMaxInput("");
     setOffset(0);
   }
 
@@ -265,6 +288,32 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
             type="date"
             value={filters.dateTo}
             onChange={(e) => setFilter("dateTo", e.target.value)}
+          />
+        </label>
+        <label>
+          Min $
+          <input
+            className="txn-amount"
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            placeholder="0"
+            value={amountMinInput}
+            onChange={(e) => setAmountMinInput(e.target.value)}
+          />
+        </label>
+        <label>
+          Max $
+          <input
+            className="txn-amount"
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            placeholder="∞"
+            value={amountMaxInput}
+            onChange={(e) => setAmountMaxInput(e.target.value)}
           />
         </label>
         <button className="txn-clear" onClick={clearFilters}>

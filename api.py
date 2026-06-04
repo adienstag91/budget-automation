@@ -446,6 +446,8 @@ def get_transactions(
     ),
     date_from: Optional[str] = None,  # Format: YYYY-MM-DD
     date_to: Optional[str] = None,  # Format: YYYY-MM-DD
+    amount_min: Optional[float] = None,  # Filter on the stored (positive) magnitude
+    amount_max: Optional[float] = None,
     sort_by: str = Query("txn_date", regex="^(txn_date|amount|merchant_norm|category)$"),
     sort_dir: str = Query("desc", regex="^(asc|desc)$"),
     limit: int = Query(100, le=1000),
@@ -503,7 +505,18 @@ def get_transactions(
         if date_to:
             query += " AND txn_date <= %s"
             params.append(date_to)
-        
+
+        # Amount filters compare against the stored magnitude (amounts are stored
+        # positive; the sign is carried by `direction`), which matches what the
+        # UI shows the user.
+        if amount_min is not None:
+            query += " AND amount >= %s"
+            params.append(amount_min)
+
+        if amount_max is not None:
+            query += " AND amount <= %s"
+            params.append(amount_max)
+
         if needs_review is not None:
             query += " AND needs_review = %s"
             params.append(needs_review)
