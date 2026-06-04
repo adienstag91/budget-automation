@@ -10,6 +10,7 @@ import PivotPage from "./PivotPage.jsx";
 import ReviewQueuePage from "./ReviewQueuePage.jsx";
 import TransactionsPage from "./TransactionsPage.jsx";
 import TaxonomyPage from "./TaxonomyPage.jsx";
+import RulesPage from "./RulesPage.jsx";
 import ImportPage from "./ImportPage.jsx";
 import { fetchStats } from "./api.js";
 
@@ -63,6 +64,9 @@ function Sidebar({ reviewCount, onReviewCountChange }) {
       <NavLink to="/settings/taxonomy" className={link}>
         Taxonomy
       </NavLink>
+      <NavLink to="/settings/rules" className={link}>
+        Rules
+      </NavLink>
     </nav>
   );
 }
@@ -104,6 +108,7 @@ export default function AppShell() {
             />
             <Route path="/import" element={<ImportPage />} />
             <Route path="/settings/taxonomy" element={<TaxonomyPage />} />
+            <Route path="/settings/rules" element={<RulesPage />} />
             <Route path="*" element={<Navigate to="/pivot" replace />} />
           </Routes>
         </main>

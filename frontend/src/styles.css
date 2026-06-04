@@ -1217,3 +1217,121 @@ body {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ===== Rules page ===== */
+.rule-table {
+  font-size: 13px;
+}
+.rule-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.rule-table .col-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.rule-table .col-sortable:hover {
+  color: var(--accent);
+}
+.rule-table .col-check {
+  width: 36px;
+  text-align: center;
+}
+.rule-table .col-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.rule-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inactive rules are dimmed so over-broad/disabled rules read as "off". */
+.rule-row.inactive td {
+  opacity: 0.5;
+}
+
+.rule-type {
+  font-size: 11px;
+  color: var(--muted);
+  background: #f0f2f5;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.rule-mval {
+  font-weight: 600;
+}
+
+/* Approximate match count: muted to signal it's an estimate, not exact. */
+.match-badge {
+  font-size: 11px;
+  color: var(--muted);
+  background: #f0f2f5;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.row-edit-toggle.danger {
+  margin-left: 6px;
+  border-color: #e3b4b4;
+  color: #b23a3a;
+}
+.row-edit-toggle.danger:hover {
+  background: #fdecec;
+  border-color: #b23a3a;
+  color: #b23a3a;
+}
+
+/* Add-rule panel (above the table when adding a new rule) */
+.rule-add-panel {
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rule-add-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+/* Shared edit/add form (inline edit row + add panel) */
+.rule-edit {
+  max-width: 900px;
+}
+.rule-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 8px 16px;
+}
+.rule-edit-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.rule-edit-grid input,
+.rule-edit-grid select {
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+.rule-edit-grid .rule-notes {
+  grid-column: 1 / -1;
+}
+.rule-priority {
+  width: 90px;
+}
+.rule-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}

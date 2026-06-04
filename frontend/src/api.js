@@ -123,12 +123,16 @@ export function recategorizeReviewQueue() {
   return sendJSON(`/api/transactions/recategorize-review`, "POST", {});
 }
 
-// Create a categorization rule (writes to merchant_rules).
+// Create a categorization rule (writes to merchant_rules). matchType/priority
+// are optional (the per-row "create rule" checkbox omits them; the Rules page
+// "Add rule" form sets them).
 export async function createRule({
   merchantNorm,
   category,
   subcategory,
   matchDetail,
+  matchType,
+  priority,
 }) {
   const params = new URLSearchParams({
     merchant_norm: merchantNorm,
@@ -136,6 +140,8 @@ export async function createRule({
     subcategory,
   });
   if (matchDetail) params.set("match_detail", matchDetail);
+  if (matchType) params.set("match_type", matchType);
+  if (priority != null && priority !== "") params.set("priority", String(priority));
   const res = await fetch(`/api/rules?${params.toString()}`, {
     method: "POST",
   });
@@ -144,6 +150,23 @@ export async function createRule({
     throw new Error(`Create rule failed (${res.status}): ${text}`);
   }
   return res.json();
+}
+
+// List ALL rules (active + inactive) with an approximate per-rule match_count.
+// Returns { rules: [...], count }. The Rules page filters/sorts client-side.
+export function fetchRules() {
+  return getJSON(`/api/rules`);
+}
+
+// Edit a rule. `patch` may include any of: match_type, match_value,
+// match_detail, category, subcategory, priority, is_active, notes.
+export function updateRule(ruleId, patch) {
+  return sendJSON(`/api/rules/${ruleId}`, "PUT", patch);
+}
+
+// Permanently delete a rule. Returns { deleted: rule_id }.
+export function deleteRule(ruleId) {
+  return sendJSON(`/api/rules/${ruleId}`, "DELETE");
 }
 
 // ===== Import (Chase CSV) + Amazon enrichment =====
