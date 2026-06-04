@@ -965,3 +965,251 @@ body {
   color: #6b5300;
   border-color: #f0e0a0;
 }
+
+/* ===== Transactions page ===== */
+.txn-toolbar {
+  gap: 10px 14px;
+}
+
+/* This page stacks a scrollable grid above a pager, so override the default
+   row layout of .content into a column. */
+.txn-page-content {
+  flex-direction: column;
+}
+.txn-page-content .grid-wrap {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.txn-search {
+  flex: 1 1 280px;
+  min-width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.txn-clear {
+  font-size: 13px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.txn-clear:hover {
+  background: var(--accent-soft);
+}
+
+/* Sticky bulk-action bar (shown when rows are selected) */
+.bulk-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid #c7d7fb;
+}
+
+.bulk-count {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.bulk-bar select {
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.bulk-apply {
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bulk-apply:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.bulk-clear {
+  font-size: 13px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bulk-clear:hover {
+  background: #fff;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Transactions table */
+.txn-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.txn-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  background: #f0f2f5;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.txn-table .col-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.txn-table .col-sortable:hover {
+  color: var(--accent);
+}
+
+.txn-table .col-check {
+  width: 32px;
+  text-align: center;
+}
+
+.txn-table .col-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.txn-table .col-edit {
+  width: 56px;
+  text-align: right;
+}
+
+.txn-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #eef0f3;
+  vertical-align: top;
+}
+
+.txn-table tr:last-child td {
+  border-bottom: none;
+}
+
+.txn-table .col-desc {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.txn-row.selected td {
+  background: var(--accent-soft);
+}
+
+.txn-table .detail {
+  color: var(--muted);
+}
+
+.review-flag {
+  margin-left: 6px;
+  color: #b8860b;
+  font-size: 12px;
+}
+
+.col-amount.credit {
+  color: #1e7e34;
+}
+
+.tag-chip.mini {
+  font-size: 11px;
+  padding: 1px 5px 1px 7px;
+  margin-right: 4px;
+}
+
+.row-edit-toggle {
+  font-size: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.row-edit-toggle:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.txn-edit-row td {
+  background: #fafbfc;
+  padding: 12px 14px;
+}
+
+.txn-edit {
+  max-width: 760px;
+}
+
+.txn-edit-meta {
+  margin-top: 4px;
+}
+
+/* Pager */
+.txn-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px;
+  flex-shrink: 0;
+}
+
+.txn-pager button {
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.txn-pager button:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.txn-pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.txn-pager-info {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

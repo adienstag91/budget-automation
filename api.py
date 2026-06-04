@@ -440,6 +440,10 @@ def get_transactions(
     needs_review: Optional[bool] = None,
     direction: Optional[str] = Query(None, regex="^(debit|credit)$"),
     merchant_search: Optional[str] = None,
+    tag: Optional[str] = None,
+    category_source: Optional[str] = Query(
+        None, regex="^(rule|llm|manual|none|venmo_expanded)$"
+    ),
     date_from: Optional[str] = None,  # Format: YYYY-MM-DD
     date_to: Optional[str] = None,  # Format: YYYY-MM-DD
     sort_by: str = Query("txn_date", regex="^(txn_date|amount|merchant_norm|category)$"),
@@ -505,10 +509,23 @@ def get_transactions(
             params.append(needs_review)
         
         if merchant_search:
-            query += " AND (merchant_norm ILIKE %s OR description_raw ILIKE %s)"
-            params.append(f"%{merchant_search}%")
-            params.append(f"%{merchant_search}%")
-        
+            # Free-text search across merchant, raw description, and notes.
+            query += (
+                " AND (merchant_norm ILIKE %s OR description_raw ILIKE %s"
+                " OR COALESCE(notes, '') ILIKE %s)"
+            )
+            like = f"%{merchant_search}%"
+            params.extend([like, like, like])
+
+        if tag:
+            # Match transactions carrying this exact tag (tags is a text[]).
+            query += " AND %s = ANY(tags)"
+            params.append(tag)
+
+        if category_source:
+            query += " AND category_source = %s"
+            params.append(category_source)
+
         # Build ORDER BY clause
         order_clause = f" ORDER BY {sort_by} {sort_dir.upper()}"
         
@@ -1686,6 +1703,216 @@ def import_commit(body: ImportCommitBody):
         inserted, duplicates, errors = insert_transactions(conn, txn_dicts)
         return {"inserted": inserted, "duplicates": duplicates, "errors": errors}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.post("/api/transactions/recategorize-review")
+def recategorize_review_queue():
+    """
+    Re-run the needs-review queue through the rules + LLM pipeline.
+
+    Targets every transaction with needs_review = TRUE (e.g. rows imported while
+    the LLM was unavailable, plus prior low-confidence attempts). Each is passed
+    through the same CategorizationOrchestrator the importer uses (rules first,
+    then LLM fallback). Results are written back per row:
+
+      - A rule/LLM suggestion (anything other than 'Uncategorized') overwrites the
+        row's category/subcategory/category_source/category_confidence.
+      - needs_review is cleared (FALSE) only when the result's confidence meets the
+        REVIEW_THRESHOLD; otherwise the suggestion is filled in but the row stays
+        flagged for manual confirmation.
+      - Rows the pipeline still can't place (or that error) are left untouched and
+        stay in the queue.
+
+    Manual recategorizations are NOT preserved across this call only if they were
+    still flagged needs_review (a manual edit normally clears the flag, so it won't
+    be picked up here). Writes are per-row committed; the LLM is paid on this call.
+    """
+    from budget_automation.core.taxonomy_db import load_taxonomy_from_db
+    from budget_automation.core.categorization_orchestrator import (
+        CategorizationOrchestrator,
+        Transaction,
+        load_rules_from_db,
+    )
+
+    review_threshold = float(os.getenv("REVIEW_THRESHOLD", "0.80"))
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT txn_id, merchant_norm, merchant_detail, description_raw,
+                   amount, direction
+            FROM transactions
+            WHERE needs_review = TRUE
+            ORDER BY txn_id
+            """
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+
+        if not rows:
+            return {
+                "scanned": 0, "rule_matched": 0, "llm_matched": 0,
+                "cleared": 0, "still_flagged": 0, "unresolved": 0,
+            }
+
+        taxonomy = load_taxonomy_from_db(conn)
+        rules = load_rules_from_db(conn)
+        orchestrator = CategorizationOrchestrator(
+            taxonomy=taxonomy,
+            rules=rules,
+            review_threshold=review_threshold,
+            enable_llm=True,
+        )
+
+        # Build Transaction objects, keeping each one's txn_id for write-back.
+        # categorize_batch mutates these in place (only reorders the list), so
+        # pairing by object identity is exact.
+        txn_by_id = {}
+        transactions = []
+        for (txn_id, m_norm, m_detail, desc, amount, direction) in rows:
+            txn = Transaction(
+                txn_id=txn_id,
+                merchant_norm=m_norm,
+                merchant_detail=m_detail,
+                description_raw=desc or "",
+                amount=float(amount),
+                direction=direction,
+                txn_date="",
+                post_date="",
+                account_id=0,
+                source="recategorize",
+                type="",
+                is_return=False,
+            )
+            txn_by_id[id(txn)] = txn_id
+            transactions.append(txn)
+
+        categorized = orchestrator.categorize_batch(transactions)
+
+        rule_matched = llm_matched = cleared = still_flagged = unresolved = 0
+        write_cursor = conn.cursor()
+        for txn in categorized:
+            real_id = txn_by_id[id(txn)]
+
+            # Pipeline couldn't place it (no rule, LLM disabled/failed) -> leave
+            # the row exactly as it was, still in the queue.
+            if not txn.category or txn.category == "Uncategorized":
+                unresolved += 1
+                continue
+
+            confidence = txn.category_confidence or 0.0
+            clear = confidence >= review_threshold
+            new_needs_review = not clear
+
+            write_cursor.execute(
+                """
+                UPDATE transactions
+                SET category = %s,
+                    subcategory = %s,
+                    category_source = %s,
+                    category_confidence = %s,
+                    needs_review = %s,
+                    notes = %s
+                WHERE txn_id = %s
+                """,
+                (
+                    txn.category,
+                    txn.subcategory,
+                    txn.category_source,
+                    confidence,
+                    new_needs_review,
+                    txn.notes,
+                    real_id,
+                ),
+            )
+            conn.commit()
+
+            if txn.category_source == "rule":
+                rule_matched += 1
+            elif txn.category_source == "llm":
+                llm_matched += 1
+            if clear:
+                cleared += 1
+            else:
+                still_flagged += 1
+
+        write_cursor.close()
+
+        return {
+            "scanned": len(rows),
+            "rule_matched": rule_matched,
+            "llm_matched": llm_matched,
+            "cleared": cleared,
+            "still_flagged": still_flagged,
+            "unresolved": unresolved,
+        }
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+class BulkRecategorizeBody(BaseModel):
+    txn_ids: List[int]
+    category: str
+    subcategory: Optional[str] = None
+
+
+@app.post("/api/transactions/bulk-recategorize")
+def bulk_recategorize(body: BulkRecategorizeBody):
+    """
+    Recategorize many transactions at once (used by the Transactions cleanup
+    page). Mirrors the single PUT semantics: stamps category_source='manual',
+    confidence 1.0, and clears needs_review.
+
+    The (category, subcategory) pair is validated against the DB taxonomy and an
+    invalid pair is rejected (400) — this is an explicit user action, so we do
+    NOT silently fall back to Uncategorized. All rows update in one transaction.
+    """
+    if not body.txn_ids:
+        return {"updated": 0}
+
+    conn = get_db_connection()
+    try:
+        valid_pairs = _valid_taxonomy_pairs(conn)
+        if (body.category, body.subcategory) not in valid_pairs and (
+            body.category,
+            None,
+        ) not in valid_pairs:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid category/subcategory: "
+                f"{body.category} / {body.subcategory}",
+            )
+
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE transactions
+            SET category = %s,
+                subcategory = %s,
+                category_source = 'manual',
+                category_confidence = 1.0,
+                needs_review = FALSE
+            WHERE txn_id = ANY(%s)
+            """,
+            (body.category, body.subcategory, body.txn_ids),
+        )
+        updated = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        return {"updated": updated}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()

@@ -24,15 +24,27 @@ export function fetchPivot({ monthsLimit = 12, startDate, endDate, view = "expen
   return getJSON(`/api/pivot?${params.toString()}`);
 }
 
-// Individual transactions. Used by the drilldown panel and the review queue.
+// Individual transactions. Used by the drilldown panel, the review queue, and
+// the Transactions cleanup page.
 // direction: "debit" | "credit" | undefined (both). needsReview: filter the queue.
+// search: free text (merchant/description/notes). tag: exact tag match.
+// dateFrom/dateTo: "YYYY-MM-DD". sortBy/sortDir/offset: paging + ordering.
+// Returns { transactions, total_count, count, limit, offset }.
 export function fetchTransactions({
   category,
   subcategory,
   month,
   direction,
   needsReview,
+  search,
+  tag,
+  categorySource,
+  dateFrom,
+  dateTo,
+  sortBy = "txn_date",
+  sortDir = "desc",
   limit = 200,
+  offset = 0,
 } = {}) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (category) params.set("category", category);
@@ -40,9 +52,25 @@ export function fetchTransactions({
   if (month) params.set("month", month);
   if (direction) params.set("direction", direction);
   if (needsReview != null) params.set("needs_review", String(needsReview));
-  params.set("sort_by", "txn_date");
-  params.set("sort_dir", "desc");
+  if (search) params.set("merchant_search", search);
+  if (tag) params.set("tag", tag);
+  if (categorySource) params.set("category_source", categorySource);
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  if (offset) params.set("offset", String(offset));
+  params.set("sort_by", sortBy);
+  params.set("sort_dir", sortDir);
   return getJSON(`/api/transactions?${params.toString()}`);
+}
+
+// Recategorize many transactions at once (Transactions cleanup page).
+// Returns { updated }.
+export function bulkRecategorize(txnIds, { category, subcategory }) {
+  return sendJSON(`/api/transactions/bulk-recategorize`, "POST", {
+    txn_ids: txnIds,
+    category,
+    subcategory: subcategory || null,
+  });
 }
 
 // Full taxonomy: { category: [subcategory, ...] }
@@ -80,6 +108,12 @@ export async function updateTransaction(
     throw new Error(`Update failed (${res.status}): ${text}`);
   }
   return res.json();
+}
+
+// Re-run the whole needs-review queue through rules + LLM. Returns
+// { scanned, rule_matched, llm_matched, cleared, still_flagged, unresolved }.
+export function recategorizeReviewQueue() {
+  return sendJSON(`/api/transactions/recategorize-review`, "POST", {});
 }
 
 // Create a categorization rule (writes to merchant_rules).

@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import PivotPage from "./PivotPage.jsx";
 import ReviewQueuePage from "./ReviewQueuePage.jsx";
+import TransactionsPage from "./TransactionsPage.jsx";
 import TaxonomyPage from "./TaxonomyPage.jsx";
 import ImportPage from "./ImportPage.jsx";
 import { fetchStats } from "./api.js";
@@ -69,6 +70,13 @@ function Sidebar({ reviewCount, onReviewCountChange }) {
 export default function AppShell() {
   const [reviewCount, setReviewCount] = useState(0);
 
+  // Editing a transaction can clear its needs_review flag, so refresh the badge.
+  const refreshReviewCount = useCallback(() => {
+    fetchStats()
+      .then((s) => setReviewCount(s.needs_review))
+      .catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
       <div className="app-shell">
@@ -90,7 +98,9 @@ export default function AppShell() {
             />
             <Route
               path="/transactions"
-              element={<Placeholder name="Transactions" />}
+              element={
+                <TransactionsPage onReviewMaybeChanged={refreshReviewCount} />
+              }
             />
             <Route path="/import" element={<ImportPage />} />
             <Route path="/settings/taxonomy" element={<TaxonomyPage />} />

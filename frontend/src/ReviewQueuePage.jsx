@@ -3,6 +3,7 @@ import {
   fetchTransactions,
   fetchTaxonomy,
   fmtCurrency,
+  recategorizeReviewQueue,
 } from "./api.js";
 import RecategorizeControl from "./components/RecategorizeControl.jsx";
 import TagEditor from "./components/TagEditor.jsx";
@@ -16,6 +17,8 @@ export default function ReviewQueuePage({ onCountChange }) {
   const [taxonomy, setTaxonomy] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunMsg, setRerunMsg] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -40,6 +43,28 @@ export default function ReviewQueuePage({ onCountChange }) {
       .catch(() => setTaxonomy({}));
   }, []);
 
+  // Re-run the whole queue through rules + LLM. High-confidence results clear
+  // out of the queue; the rest get a suggestion filled in but stay flagged.
+  async function handleRerun() {
+    setRerunning(true);
+    setRerunMsg(null);
+    setError(null);
+    try {
+      const r = await recategorizeReviewQueue();
+      setRerunMsg(
+        `Re-ran ${r.scanned}: ${r.cleared} cleared, ` +
+          `${r.still_flagged} still need confirmation, ` +
+          `${r.unresolved} still unplaced ` +
+          `(${r.rule_matched} rule, ${r.llm_matched} LLM).`
+      );
+      load(); // refresh the list + badge
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRerunning(false);
+    }
+  }
+
   // Drop a row locally after it's been categorized (it's now reviewed).
   function removeRow(txnId) {
     setTxns((prev) => {
@@ -55,11 +80,35 @@ export default function ReviewQueuePage({ onCountChange }) {
     <div className="page">
       <div className="toolbar">
         <h1>Review Queue</h1>
+        <button
+          className="stat"
+          onClick={handleRerun}
+          disabled={rerunning || loading || txns.length === 0}
+          title="Re-categorize every queued transaction through rules + the LLM"
+          style={{
+            cursor: rerunning || txns.length === 0 ? "default" : "pointer",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            padding: "5px 10px",
+            background: "#fff",
+          }}
+        >
+          {rerunning ? "Re-running…" : "↻ Re-run through LLM"}
+        </button>
         <div className="spacer" />
         <div className="stat">
           <b>{txns.length}</b> to clear · {fmtCurrency(total)}
         </div>
       </div>
+
+      {rerunMsg && (
+        <div
+          className="stat"
+          style={{ margin: "0 16px 8px", color: "var(--muted)" }}
+        >
+          {rerunMsg}
+        </div>
+      )}
 
       <div className="content">
         <div className="review-wrap">
