@@ -991,6 +991,10 @@ body {
   background: #fff;
 }
 
+.txn-amount {
+  width: 80px;
+}
+
 .txn-clear {
   font-size: 13px;
   padding: 5px 12px;

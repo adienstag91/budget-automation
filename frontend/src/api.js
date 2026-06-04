@@ -28,7 +28,8 @@ export function fetchPivot({ monthsLimit = 12, startDate, endDate, view = "expen
 // the Transactions cleanup page.
 // direction: "debit" | "credit" | undefined (both). needsReview: filter the queue.
 // search: free text (merchant/description/notes). tag: exact tag match.
-// dateFrom/dateTo: "YYYY-MM-DD". sortBy/sortDir/offset: paging + ordering.
+// dateFrom/dateTo: "YYYY-MM-DD". amountMin/amountMax: filter the (positive)
+// dollar magnitude. sortBy/sortDir/offset: paging + ordering.
 // Returns { transactions, total_count, count, limit, offset }.
 export function fetchTransactions({
   category,
@@ -41,6 +42,8 @@ export function fetchTransactions({
   categorySource,
   dateFrom,
   dateTo,
+  amountMin,
+  amountMax,
   sortBy = "txn_date",
   sortDir = "desc",
   limit = 200,
@@ -57,6 +60,10 @@ export function fetchTransactions({
   if (categorySource) params.set("category_source", categorySource);
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
+  if (amountMin != null && amountMin !== "")
+    params.set("amount_min", String(amountMin));
+  if (amountMax != null && amountMax !== "")
+    params.set("amount_max", String(amountMax));
   if (offset) params.set("offset", String(offset));
   params.set("sort_by", sortBy);
   params.set("sort_dir", sortDir);
