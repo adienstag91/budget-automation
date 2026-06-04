@@ -715,6 +715,22 @@ def update_transaction(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+VALID_MATCH_TYPES = ("exact", "contains", "startswith", "regex")
+
+
+class RuleUpdate(BaseModel):
+    """Partial update for a merchant rule. Every field optional; only the
+    provided ones are changed (mirrors the PUT /api/transactions style)."""
+    match_type: Optional[str] = None
+    match_value: Optional[str] = None
+    match_detail: Optional[str] = None
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    priority: Optional[int] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
 @app.post("/api/rules")
 def create_rule(
     merchant_norm: str,
@@ -726,15 +742,35 @@ def create_rule(
 ):
     """
     Create a new categorization rule.
-    Called when user clicks "Save & Create Rule" in the drilldown.
+    Called when user clicks "Save & Create Rule" in the drilldown, and from the
+    Rules page "Add rule" form.
 
     Writes to the merchant_rules table (rule_pack/priority/match_type/
     match_value/match_detail/category/subcategory). Supports composite
     rules via match_detail (e.g. "SQ" + "BREADS BAKERY").
     """
+    if match_type not in VALID_MATCH_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid match_type: {match_type}. "
+            f"Allowed: {', '.join(VALID_MATCH_TYPES)}",
+        )
+
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
+
+        # Validate (category, subcategory) against the DB taxonomy. Rule edits
+        # are explicit user actions, so reject bad pairs instead of falling back.
+        valid_pairs = _valid_taxonomy_pairs(conn)
+        if (category, subcategory) not in valid_pairs and (
+            category,
+            None,
+        ) not in valid_pairs:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid category/subcategory: {category} / {subcategory}",
+            )
 
         query = """
             INSERT INTO merchant_rules
@@ -759,7 +795,6 @@ def create_rule(
 
         conn.commit()
         cursor.close()
-        conn.close()
 
         return {
             "rule_id": rule_id,
@@ -770,8 +805,181 @@ def create_rule(
             "message": "Rule created successfully"
         }
 
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.get("/api/rules")
+def get_rules():
+    """
+    List ALL merchant rules (active and inactive), ordered by priority then id.
+    The frontend Rules page loads everything once and filters/sorts client-side
+    (~200 rules).
+
+    Each rule includes an APPROXIMATE `match_count`: the number of transactions
+    currently categorized by *any* rule into the rule's (category, subcategory).
+    Because transactions don't persist which rule_id categorized them, this is a
+    coarse proxy shared across rules that target the same (category, subcategory)
+    -- surfaced in the UI as "≈ matches", not an exact per-rule count.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Approximate per-(category, subcategory) rule-sourced txn counts.
+        cursor.execute(
+            """
+            SELECT category, subcategory, COUNT(*) AS n
+            FROM transactions
+            WHERE category_source = 'rule'
+            GROUP BY category, subcategory
+            """
+        )
+        counts = {(r["category"], r["subcategory"]): r["n"] for r in cursor.fetchall()}
+
+        cursor.execute(
+            """
+            SELECT rule_id, rule_pack, priority, match_type, match_value,
+                   match_detail, category, subcategory, is_active,
+                   created_by, created_at, notes
+            FROM merchant_rules
+            ORDER BY priority, rule_id
+            """
+        )
+        rules = []
+        for r in cursor.fetchall():
+            rule = dict(r)
+            rule["created_at"] = (
+                r["created_at"].isoformat() if r["created_at"] else None
+            )
+            rule["match_count"] = counts.get((r["category"], r["subcategory"]), 0)
+            rules.append(rule)
+
+        cursor.close()
+        conn.close()
+
+        return {"rules": rules, "count": len(rules)}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/rules/{rule_id}")
+def update_rule(rule_id: int, body: RuleUpdate):
+    """
+    Edit a merchant rule. Only the fields present in the body are changed.
+    Used by the Rules page to toggle is_active, retarget category/subcategory,
+    or change what the rule matches on (match_value/detail/type).
+    """
+    fields = body.dict(exclude_unset=True)
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    if "match_type" in fields and fields["match_type"] not in VALID_MATCH_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid match_type: {fields['match_type']}. "
+            f"Allowed: {', '.join(VALID_MATCH_TYPES)}",
+        )
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Load the current rule so we can validate the resulting taxonomy pair
+        # even when only one of category/subcategory is being changed.
+        cursor.execute(
+            "SELECT category, subcategory FROM merchant_rules WHERE rule_id = %s",
+            (rule_id,),
+        )
+        current = cursor.fetchone()
+        if not current:
+            raise HTTPException(status_code=404, detail="Rule not found")
+
+        if "category" in fields or "subcategory" in fields:
+            new_cat = fields.get("category", current["category"])
+            new_sub = fields.get("subcategory", current["subcategory"])
+            valid_pairs = _valid_taxonomy_pairs(conn)
+            if (new_cat, new_sub) not in valid_pairs and (
+                new_cat,
+                None,
+            ) not in valid_pairs:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid category/subcategory: {new_cat} / {new_sub}",
+                )
+
+        set_parts = [f"{col} = %s" for col in fields]
+        params = list(fields.values())
+        params.append(rule_id)
+        cursor.execute(
+            f"""
+            UPDATE merchant_rules
+            SET {', '.join(set_parts)}
+            WHERE rule_id = %s
+            RETURNING rule_id, rule_pack, priority, match_type, match_value,
+                      match_detail, category, subcategory, is_active,
+                      created_by, created_at, notes
+            """,
+            params,
+        )
+        updated = cursor.fetchone()
+
+        conn.commit()
+        cursor.close()
+
+        result = dict(updated)
+        result["created_at"] = (
+            updated["created_at"].isoformat() if updated["created_at"] else None
+        )
+        return result
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.delete("/api/rules/{rule_id}")
+def delete_rule(rule_id: int):
+    """
+    Permanently delete a merchant rule. Safe: transactions don't FK to rules, so
+    already-categorized transactions keep their stamped category. Future imports
+    simply no longer apply this rule.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM merchant_rules WHERE rule_id = %s RETURNING rule_id",
+            (rule_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Rule not found")
+
+        conn.commit()
+        cursor.close()
+        return {"deleted": row[0]}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 
 @app.get("/api/categories")
