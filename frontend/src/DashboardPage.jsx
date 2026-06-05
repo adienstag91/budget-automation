@@ -13,6 +13,36 @@ const TREND_MONTHS = 6;
 const TOP_CATEGORIES = 6;
 const RECENT_LIMIT = 8;
 
+// Period options for the Income/Expenses/Net cards (counts stay all-time).
+// Default is "Last month" — always a complete, populated period (the current
+// month is often empty until transactions are imported).
+const PERIODS = [
+  { key: "last_month", label: "Last month" },
+  { key: "this_month", label: "This month" },
+  { key: "ytd", label: "Year to date" },
+  { key: "all", label: "All time" },
+];
+const DEFAULT_PERIOD = "last_month";
+
+const pad = (n) => String(n).padStart(2, "0");
+const isoLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+// Resolve a period key to {startDate, endDate, label}. Local-time safe (no UTC
+// shift). "all" returns undefined bounds (all-time).
+function periodRange(key) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const label = (PERIODS.find((p) => p.key === key) || PERIODS[0]).label;
+  if (key === "this_month")
+    return { startDate: isoLocal(new Date(y, m, 1)), endDate: isoLocal(new Date(y, m + 1, 0)), label };
+  if (key === "last_month")
+    return { startDate: isoLocal(new Date(y, m - 1, 1)), endDate: isoLocal(new Date(y, m, 0)), label };
+  if (key === "ytd")
+    return { startDate: isoLocal(new Date(y, 0, 1)), endDate: isoLocal(new Date(y, 11, 31)), label };
+  return { startDate: undefined, endDate: undefined, label };
+}
+
 // A simple horizontal bar row (label · track · value). Used for the spending
 // trend and top-categories sections — no chart library needed.
 function BarRow({ label, value, max, onClick }) {
@@ -32,7 +62,7 @@ function BarRow({ label, value, max, onClick }) {
   );
 }
 
-function StatCard({ label, value, tone, onClick }) {
+function StatCard({ label, value, tone, onClick, dim }) {
   return (
     <div
       className={
@@ -40,6 +70,7 @@ function StatCard({ label, value, tone, onClick }) {
         (tone ? ` ${tone}` : "") +
         (onClick ? " clickable" : "")
       }
+      style={dim ? { opacity: 0.5 } : undefined}
       onClick={onClick}
       role={onClick ? "button" : undefined}
     >
@@ -51,55 +82,86 @@ function StatCard({ label, value, tone, onClick }) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(null); // period-independent (pivot/recent/imports)
+  const [stats, setStats] = useState(null); // all-time counts + period-scoped money
+  const [period, setPeriod] = useState(DEFAULT_PERIOD);
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const load = useCallback(() => {
+  const loadData = useCallback(() => {
     setLoading(true);
     setError(null);
     Promise.all([
-      fetchStats(),
       fetchPivot({ monthsLimit: TREND_MONTHS, view: "expense" }),
-      fetchTransactions({
-        limit: RECENT_LIMIT,
-        sortBy: "txn_date",
-        sortDir: "desc",
-      }),
+      fetchTransactions({ limit: RECENT_LIMIT, sortBy: "txn_date", sortDir: "desc" }),
       importLastDates().catch(() => null), // non-critical
     ])
-      .then(([stats, pivot, txns, imports]) => {
-        setData({
-          stats,
-          pivot,
-          recent: txns.transactions || [],
-          imports,
-        });
+      .then(([pivot, txns, imports]) => {
+        setData({ pivot, recent: txns.transactions || [], imports });
       })
       .catch((e) => setError(e.message || String(e)))
       .finally(() => setLoading(false));
   }, []);
 
+  const loadStats = useCallback(() => {
+    setStatsLoading(true);
+    const { startDate, endDate } = periodRange(period);
+    fetchStats({ startDate, endDate })
+      .then(setStats)
+      .catch((e) => setError(e.message || String(e)))
+      .finally(() => setStatsLoading(false));
+  }, [period]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    loadData();
+  }, [loadData]);
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  const refresh = () => {
+    loadData();
+    loadStats();
+  };
+  const periodLabel = periodRange(period).label;
 
   return (
     <div className="page">
       <div className="toolbar">
         <h1>Dashboard</h1>
+        <label>
+          Period
+          <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+            {PERIODS.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="spacer" />
-        <button className="dash-refresh" onClick={load} disabled={loading}>
+        <button
+          className="dash-refresh"
+          onClick={refresh}
+          disabled={loading || statsLoading}
+        >
           ↻ Refresh
         </button>
       </div>
 
       <div className="content">
         <div className="dash-body">
-          {loading && <div className="loading">Loading dashboard…</div>}
+          {loading && !data && <div className="loading">Loading dashboard…</div>}
           {error && <div className="error">{error}</div>}
-          {!loading && !error && data && (
-            <DashboardContent data={data} navigate={navigate} />
+          {!error && data && stats && (
+            <DashboardContent
+              data={data}
+              stats={stats}
+              periodLabel={periodLabel}
+              statsLoading={statsLoading}
+              navigate={navigate}
+            />
           )}
         </div>
       </div>
@@ -107,8 +169,8 @@ export default function DashboardPage() {
   );
 }
 
-function DashboardContent({ data, navigate }) {
-  const { stats, pivot, recent, imports } = data;
+function DashboardContent({ data, stats, periodLabel, statsLoading, navigate }) {
+  const { pivot, recent, imports } = data;
 
   const net = (stats.total_income || 0) - (stats.total_expenses || 0);
 
@@ -149,19 +211,22 @@ function DashboardContent({ data, navigate }) {
           onClick={() => navigate("/review")}
         />
         <StatCard
-          label="Income (all time)"
+          label={`Income · ${periodLabel}`}
           value={fmtCurrency(stats.total_income || 0)}
           tone="pos"
+          dim={statsLoading}
         />
         <StatCard
-          label="Expenses (all time)"
+          label={`Expenses · ${periodLabel}`}
           value={fmtCurrency(stats.total_expenses || 0)}
           tone="neg"
+          dim={statsLoading}
         />
         <StatCard
-          label="Net (all time)"
+          label={`Net · ${periodLabel}`}
           value={fmtCurrency(net)}
           tone={net >= 0 ? "pos" : "neg"}
+          dim={statsLoading}
         />
       </div>
 
