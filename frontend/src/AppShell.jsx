@@ -12,19 +12,8 @@ import TransactionsPage from "./TransactionsPage.jsx";
 import TaxonomyPage from "./TaxonomyPage.jsx";
 import RulesPage from "./RulesPage.jsx";
 import ImportPage from "./ImportPage.jsx";
+import DashboardPage from "./DashboardPage.jsx";
 import { fetchStats } from "./api.js";
-
-// Simple placeholder for pages not built yet.
-function Placeholder({ name }) {
-  return (
-    <div className="page">
-      <div className="placeholder">
-        <h1>{name}</h1>
-        <p>Coming soon.</p>
-      </div>
-    </div>
-  );
-}
 
 function Sidebar({ reviewCount, onReviewCountChange }) {
   // Refresh the badge whenever the route is the review queue, and on mount.
@@ -96,10 +85,7 @@ export default function AppShell() {
               path="/review"
               element={<ReviewQueuePage onCountChange={setReviewCount} />}
             />
-            <Route
-              path="/dashboard"
-              element={<Placeholder name="Dashboard" />}
-            />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route
               path="/transactions"
               element={
