@@ -225,6 +225,28 @@ export function importLastDates() {
   return getJSON(`/api/import/last-dates`);
 }
 
+// ===== Venmo (statement CSV import + enrichment) =====
+
+// Stage an uploaded Venmo statement CSV into venmo_transactions_raw.
+// Returns { inserted, already_imported, parsed, by_type, account_owner }.
+export function venmoImport(file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return postForm(`/api/venmo/import`, fd);
+}
+
+// Read-only Venmo enrichment plan: cashout expansions + outgoing enrichments.
+// Returns { totals, rows: [{kind:"expand"|"enrich", key, ...}] }.
+export function venmoEnrichPreview() {
+  return getJSON(`/api/venmo/enrichment/preview`);
+}
+
+// Commit the selected enrichment keys (soft-supersedes matched cashouts).
+// Returns { expanded_cashouts, new_rows, enriched_outgoing, superseded_txns, skipped }.
+export function venmoEnrichCommit(keys) {
+  return sendJSON(`/api/venmo/enrichment/commit`, "POST", { keys });
+}
+
 // Read-only enrichment plan (matches, line items, txns to supersede).
 export function amazonEnrichPreview({ startDate, useLlm = false } = {}) {
   const params = new URLSearchParams({ use_llm: String(useLlm) });

@@ -110,6 +110,96 @@ def parse_venmo_csv(csv_path):
     return transactions
 
 
+def stage_venmo_transactions(conn, csv_path):
+    """
+    Non-interactive Venmo CSV staging for the web API.
+
+    Parses the CSV, dedups within the file and against the DB on venmo_id,
+    inserts the new rows into venmo_transactions_raw, and commits.
+
+    Returns: {"parsed", "duplicates_in_csv", "already_imported", "inserted",
+              "by_type", "account_owner", "batch_id"}
+    """
+    txns = parse_venmo_csv(csv_path)
+    parsed = len(txns)
+    account_owner = txns[0]['account_owner'] if txns else None
+
+    # Dedup within the file.
+    seen = set()
+    unique = []
+    duplicates_in_csv = 0
+    for t in txns:
+        if t['venmo_id'] in seen:
+            duplicates_in_csv += 1
+            continue
+        seen.add(t['venmo_id'])
+        unique.append(t)
+    txns = unique
+
+    if not txns:
+        return {
+            'parsed': parsed,
+            'duplicates_in_csv': duplicates_in_csv,
+            'already_imported': 0,
+            'inserted': 0,
+            'by_type': {},
+            'account_owner': account_owner,
+            'batch_id': None,
+        }
+
+    cursor = conn.cursor()
+    batch_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    venmo_ids = [t['venmo_id'] for t in txns]
+    placeholders = ','.join(['%s'] * len(venmo_ids))
+    cursor.execute(
+        f"SELECT venmo_id FROM venmo_transactions_raw WHERE venmo_id IN ({placeholders})",
+        venmo_ids,
+    )
+    existing = set(row[0] for row in cursor.fetchall())
+    new_txns = [t for t in txns if t['venmo_id'] not in existing]
+
+    insert_query = """
+        INSERT INTO venmo_transactions_raw (
+            venmo_id, transaction_datetime, transaction_date,
+            transaction_type, amount, direction, from_name, to_name,
+            note, account_owner, import_batch_id
+        ) VALUES (
+            %(venmo_id)s, %(transaction_datetime)s, %(transaction_date)s,
+            %(transaction_type)s, %(amount)s, %(direction)s,
+            %(from_name)s, %(to_name)s, %(note)s, %(account_owner)s,
+            %(batch_id)s
+        )
+        ON CONFLICT (venmo_id) DO NOTHING
+    """
+
+    by_type = {}
+    inserted = 0
+    try:
+        for t in new_txns:
+            t['batch_id'] = batch_id
+            cursor.execute(insert_query, t)
+            inserted += 1
+            ttype = t.get('transaction_type') or 'Other'
+            by_type[ttype] = by_type.get(ttype, 0) + 1
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        cursor.close()
+        raise
+
+    cursor.close()
+    return {
+        'parsed': parsed,
+        'duplicates_in_csv': duplicates_in_csv,
+        'already_imported': len(txns) - len(new_txns),
+        'inserted': inserted,
+        'by_type': by_type,
+        'account_owner': account_owner,
+        'batch_id': batch_id,
+    }
+
+
 def import_venmo_transactions(*csv_paths, dry_run=False):
     """
     Import Venmo transactions into staging table with deduplication
