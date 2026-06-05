@@ -94,10 +94,16 @@ export function fetchTaxonomy() {
   return getJSON(`/api/subcategories`);
 }
 
-// Dashboard/queue stats: { needs_review, categorized, total_transactions, ... }
+// Dashboard/queue stats: { needs_review, categorized, total_transactions, ... }.
+// Counts are always all-time; startDate/endDate scope only income/expenses/net.
 // Pass includeSql to also echo the read-only SQL behind the numbers.
-export function fetchStats(includeSql = false) {
-  return getJSON(`/api/stats${includeSql ? "?include_sql=true" : ""}`);
+export function fetchStats({ startDate, endDate, includeSql = false } = {}) {
+  const params = new URLSearchParams();
+  if (startDate) params.set("start_date", startDate);
+  if (endDate) params.set("end_date", endDate);
+  if (includeSql) params.set("include_sql", "true");
+  const qs = params.toString();
+  return getJSON(`/api/stats${qs ? `?${qs}` : ""}`);
 }
 
 // Update a single transaction's category/subcategory/notes/date and/or tags.
