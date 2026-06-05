@@ -1391,3 +1391,192 @@ body {
 .sql-copy:hover {
   background: rgba(255, 255, 255, 0.16);
 }
+
+/* ===== Dashboard ===== */
+.dash-body {
+  flex: 1;
+  padding: 16px 20px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.dash-refresh {
+  font-size: 13px;
+  padding: 5px 12px;
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.dash-refresh:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.dash-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Stat cards */
+.dash-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.dash-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.dash-card .label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.dash-card .value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dash-card.pos .value {
+  color: #15803d;
+}
+.dash-card.neg .value {
+  color: var(--negative);
+}
+.dash-card.warn {
+  border-color: #f0d28a;
+  background: #fffaf0;
+}
+.dash-card.clickable {
+  cursor: pointer;
+}
+.dash-card.clickable:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Section panels */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.dash-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.dash-grid .dash-section {
+  margin-bottom: 0;
+}
+.dash-section h2 {
+  font-size: 14px;
+  margin: 0 0 12px;
+  color: var(--text);
+}
+.dash-section h2 .dash-sub {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* Bar rows (trend + top categories) */
+.dash-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dash-bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 90px;
+  align-items: center;
+  gap: 10px;
+}
+.dash-bar-row.clickable {
+  cursor: pointer;
+}
+.dash-bar-label {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-bar-track {
+  background: var(--accent-soft);
+  border-radius: 4px;
+  height: 16px;
+  overflow: hidden;
+}
+.dash-bar-fill {
+  background: var(--accent);
+  height: 100%;
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.2s ease;
+}
+.dash-bar-value {
+  font-size: 13px;
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Recent transactions */
+.dash-recent {
+  display: flex;
+  flex-direction: column;
+}
+.dash-recent-row {
+  display: grid;
+  grid-template-columns: 96px 1fr 160px 110px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.dash-recent-row:last-child {
+  border-bottom: none;
+}
+.dash-recent-date {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.dash-recent-merchant {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-recent-detail {
+  color: var(--muted);
+}
+.dash-recent-cat {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-recent-amt {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.dash-recent-amt.credit {
+  color: #15803d;
+}
+
+.dash-footnote {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 2px 8px;
+}
+.dash-footnote b {
+  color: var(--text);
+}
