@@ -6,6 +6,7 @@ import {
   updateRule,
   deleteRule,
 } from "./api.js";
+import SqlPeek from "./components/SqlPeek.jsx";
 
 const MATCH_TYPES = ["exact", "contains", "startswith", "regex"];
 
@@ -522,6 +523,10 @@ export default function RulesPage() {
                 ))}
               </tbody>
             </table>
+          )}
+
+          {!loading && !error && (
+            <SqlPeek load={() => fetchRules(true)} />
           )}
         </div>
       </div>

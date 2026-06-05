@@ -83,6 +83,7 @@ class PivotResponse(BaseModel):
     months: List[str]  # Ordered list of months (oldest to newest)
     categories: List[CategoryData]
     grand_totals: dict[str, float]  # month -> total
+    sql: Optional[str] = None  # Read-only echo of the query (only when include_sql)
 
 
 # ===== Taxonomy management request bodies =====
@@ -148,6 +149,7 @@ def get_pivot_data(
     include_subcategories: bool = Query(False, description="Include subcategory breakdown"),
     months_limit: int = Query(12, description="Number of recent months to include"),
     view: str = Query("spending", description="spending | income | everything"),
+    include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view"),
 ):
     """
     Get pivot table data with categories and monthly spending.
@@ -238,9 +240,14 @@ def get_pivot_data(
             ORDER BY month ASC, category ASC, subcategory ASC
         """
         
+        # Read-only SQL transparency: echo the exact query (params inlined).
+        display_sql = (
+            cursor.mogrify(query, params).decode("utf-8") if include_sql else None
+        )
+
         cursor.execute(query, params)
         rows = cursor.fetchall()
-        
+
         # Process data into structured format
         months_set = set()
         category_map = {}  # category -> {month -> amount}
@@ -332,7 +339,8 @@ def get_pivot_data(
         return PivotResponse(
             months=sorted_months,
             categories=categories,
-            grand_totals=grand_totals
+            grand_totals=grand_totals,
+            sql=display_sql
         )
     
     except Exception as e:
@@ -451,7 +459,8 @@ def get_transactions(
     sort_by: str = Query("txn_date", regex="^(txn_date|amount|merchant_norm|category)$"),
     sort_dir: str = Query("desc", regex="^(asc|desc)$"),
     limit: int = Query(100, le=1000),
-    offset: int = 0
+    offset: int = 0,
+    include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
 ):
     """
     Get individual transactions with filters.
@@ -567,9 +576,15 @@ def get_transactions(
         query += order_clause + " LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         
+        # Read-only SQL transparency: echo the exact query (params inlined) that
+        # produced this view. mogrify does NOT execute -- it just renders the SQL.
+        display_sql = (
+            cursor.mogrify(query, params).decode("utf-8") if include_sql else None
+        )
+
         cursor.execute(query, params)
         rows = cursor.fetchall()
-        
+
         transactions = []
         for row in rows:
             transactions.append({
@@ -590,13 +605,16 @@ def get_transactions(
         cursor.close()
         conn.close()
         
-        return {
+        result = {
             "transactions": transactions,
             "total_count": total_count,
             "count": len(transactions),
             "limit": limit,
             "offset": offset
         }
+        if include_sql:
+            result["sql"] = display_sql
+        return result
     
     except Exception as e:
         # Log the actual error for debugging
@@ -816,7 +834,9 @@ def create_rule(
 
 
 @app.get("/api/rules")
-def get_rules():
+def get_rules(
+    include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
+):
     """
     List ALL merchant rules (active and inactive), ordered by priority then id.
     The frontend Rules page loads everything once and filters/sorts client-side
@@ -833,25 +853,34 @@ def get_rules():
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         # Approximate per-(category, subcategory) rule-sourced txn counts.
-        cursor.execute(
-            """
+        counts_q = """
             SELECT category, subcategory, COUNT(*) AS n
             FROM transactions
             WHERE category_source = 'rule'
             GROUP BY category, subcategory
             """
-        )
+        cursor.execute(counts_q)
         counts = {(r["category"], r["subcategory"]): r["n"] for r in cursor.fetchall()}
 
-        cursor.execute(
-            """
+        rules_q = """
             SELECT rule_id, rule_pack, priority, match_type, match_value,
                    match_detail, category, subcategory, is_active,
                    created_by, created_at, notes
             FROM merchant_rules
             ORDER BY priority, rule_id
             """
+
+        # Read-only SQL transparency: echo both queries this view runs.
+        display_sql = (
+            [
+                cursor.mogrify(counts_q).decode("utf-8"),
+                cursor.mogrify(rules_q).decode("utf-8"),
+            ]
+            if include_sql
+            else None
         )
+
+        cursor.execute(rules_q)
         rules = []
         for r in cursor.fetchall():
             rule = dict(r)
@@ -864,7 +893,10 @@ def get_rules():
         cursor.close()
         conn.close()
 
-        return {"rules": rules, "count": len(rules)}
+        result = {"rules": rules, "count": len(rules)}
+        if include_sql:
+            result["sql"] = display_sql
+        return result
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1050,28 +1082,34 @@ def get_subcategories(category: Optional[str] = None):
 
 
 @app.get("/api/stats")
-def get_stats():
+def get_stats(
+    include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
+):
     """Get dashboard statistics"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        cursor.execute("""
-            SELECT 
+
+        stats_q = """
+            SELECT
                 COUNT(*) as total_transactions,
                 COUNT(*) FILTER (WHERE NOT needs_review) as categorized,
                 COUNT(*) FILTER (WHERE needs_review) as needs_review,
                 SUM(amount) FILTER (WHERE direction = 'debit') as total_expenses,
                 SUM(amount) FILTER (WHERE direction = 'credit') as total_income
             FROM transactions
-        """)
-        
+        """
+        # Read-only SQL transparency: echo the exact query.
+        display_sql = cursor.mogrify(stats_q).decode("utf-8") if include_sql else None
+
+        cursor.execute(stats_q)
+
         stats = cursor.fetchone()
-        
+
         cursor.close()
         conn.close()
-        
-        return {
+
+        result = {
             "total_transactions": stats['total_transactions'],
             "categorized": stats['categorized'],
             "needs_review": stats['needs_review'],
@@ -1079,7 +1117,10 @@ def get_stats():
             "total_expenses": float(stats['total_expenses'] or 0),
             "total_income": float(stats['total_income'] or 0)
         }
-    
+        if include_sql:
+            result["sql"] = display_sql
+        return result
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

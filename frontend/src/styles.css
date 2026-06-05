@@ -1335,3 +1335,59 @@ body {
   gap: 8px;
   margin-top: 12px;
 }
+
+/* ===== SQL transparency ("Show SQL behind this view") ===== */
+.sql-peek {
+  margin-top: 14px;
+}
+.sql-peek-toggle {
+  font-size: 13px;
+  color: var(--muted);
+}
+.sql-peek-body {
+  margin-top: 8px;
+}
+.sql-peek-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.sql-peek-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+.sql-block-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+.sql-block {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #0e1116;
+  color: #e6edf3;
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  overflow: auto;
+  max-height: 340px;
+}
+.sql-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 12px;
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e6edf3;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.sql-copy:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
