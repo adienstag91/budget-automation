@@ -13,7 +13,13 @@ async function getJSON(url) {
 
 // Pivot table data: categories -> subcategories -> { month: amount }
 // view: "expense" (default, drops transfers) | "income" | "all" (raw, no flag filter)
-export function fetchPivot({ monthsLimit = 12, startDate, endDate, view = "expense" } = {}) {
+export function fetchPivot({
+  monthsLimit = 12,
+  startDate,
+  endDate,
+  view = "expense",
+  includeSql = false,
+} = {}) {
   const params = new URLSearchParams({
     include_subcategories: "true",
     months_limit: String(monthsLimit),
@@ -21,6 +27,7 @@ export function fetchPivot({ monthsLimit = 12, startDate, endDate, view = "expen
   });
   if (startDate) params.set("start_date", startDate);
   if (endDate) params.set("end_date", endDate);
+  if (includeSql) params.set("include_sql", "true");
   return getJSON(`/api/pivot?${params.toString()}`);
 }
 
@@ -48,6 +55,7 @@ export function fetchTransactions({
   sortDir = "desc",
   limit = 200,
   offset = 0,
+  includeSql = false,
 } = {}) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (category) params.set("category", category);
@@ -65,6 +73,7 @@ export function fetchTransactions({
   if (amountMax != null && amountMax !== "")
     params.set("amount_max", String(amountMax));
   if (offset) params.set("offset", String(offset));
+  if (includeSql) params.set("include_sql", "true");
   params.set("sort_by", sortBy);
   params.set("sort_dir", sortDir);
   return getJSON(`/api/transactions?${params.toString()}`);
@@ -86,8 +95,9 @@ export function fetchTaxonomy() {
 }
 
 // Dashboard/queue stats: { needs_review, categorized, total_transactions, ... }
-export function fetchStats() {
-  return getJSON(`/api/stats`);
+// Pass includeSql to also echo the read-only SQL behind the numbers.
+export function fetchStats(includeSql = false) {
+  return getJSON(`/api/stats${includeSql ? "?include_sql=true" : ""}`);
 }
 
 // Update a single transaction's category/subcategory/notes/date and/or tags.
@@ -154,8 +164,8 @@ export async function createRule({
 
 // List ALL rules (active + inactive) with an approximate per-rule match_count.
 // Returns { rules: [...], count }. The Rules page filters/sorts client-side.
-export function fetchRules() {
-  return getJSON(`/api/rules`);
+export function fetchRules(includeSql = false) {
+  return getJSON(`/api/rules${includeSql ? "?include_sql=true" : ""}`);
 }
 
 // Edit a rule. `patch` may include any of: match_type, match_value,

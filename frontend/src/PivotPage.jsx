@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import PivotGrid from "./PivotGrid.jsx";
 import Drilldown from "./Drilldown.jsx";
 import { fetchPivot, fetchTaxonomy, fmtCurrency } from "./api.js";
+import SqlPeek from "./components/SqlPeek.jsx";
 
 // Resolve a range selection into { monthsLimit, startDate, endDate }
 // that the pivot API understands.
@@ -160,6 +161,24 @@ export default function PivotPage() {
                   ? `${selection.category}|${selection.subcategory}`
                   : null
               }
+            />
+          )}
+
+          {!loading && !error && pivot && (
+            <SqlPeek
+              load={() => {
+                const { monthsLimit, startDate, endDate } = resolveRange(
+                  range,
+                  custom
+                );
+                return fetchPivot({
+                  monthsLimit,
+                  startDate,
+                  endDate,
+                  view,
+                  includeSql: true,
+                });
+              }}
             />
           )}
         </div>

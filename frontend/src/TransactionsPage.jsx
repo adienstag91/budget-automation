@@ -8,6 +8,7 @@ import {
 import RecategorizeControl from "./components/RecategorizeControl.jsx";
 import TagEditor from "./components/TagEditor.jsx";
 import DateEditControl from "./components/DateEditControl.jsx";
+import SqlPeek from "./components/SqlPeek.jsx";
 
 const PAGE_SIZE = 100;
 
@@ -75,10 +76,10 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
     return () => clearTimeout(amtDebounceRef.current);
   }, [amountMinInput, amountMaxInput]);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    fetchTransactions({
+  // The exact params behind the current view — reused by the data fetch and by
+  // the "Show SQL" peek (with includeSql) so the echoed SQL matches the table.
+  const queryParams = useCallback(
+    (extra = {}) => ({
       search: filters.search || undefined,
       category: filters.category || undefined,
       subcategory: filters.subcategory || undefined,
@@ -92,14 +93,22 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
       sortDir: sort.dir,
       limit: PAGE_SIZE,
       offset,
-    })
+      ...extra,
+    }),
+    [filters, sort, offset]
+  );
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetchTransactions(queryParams())
       .then((data) => {
         setRows(data.transactions || []);
         setTotal(data.total_count || 0);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [filters, sort, offset]);
+  }, [queryParams]);
 
   useEffect(() => {
     load();
@@ -499,6 +508,12 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
                 })}
               </tbody>
             </table>
+          )}
+
+          {!loading && !error && (
+            <SqlPeek
+              load={() => fetchTransactions(queryParams({ includeSql: true }))}
+            />
           )}
         </div>
 
