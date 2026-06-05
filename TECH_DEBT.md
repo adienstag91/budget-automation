@@ -60,24 +60,8 @@
 
 ## 🟡 Medium Priority
 
-### Docker Compose Version Warning
-**Context:**
-- Every `docker-compose` command shows:
-  ```
-  WARN[0000] the attribute `version` is obsolete, it will be ignored
-  ```
-
-**Impact:**
-- Annoying but harmless
-- Will break in future Docker Compose versions
-
-**To Fix:**
-- Remove `version:` line from `docker-compose.yml`
-- Update to Compose v2 syntax
-
-**Parked:** 2026-02-04  
-**Priority:** Low (cosmetic)  
-**Effort:** 5 minutes
+### ~~Docker Compose Version Warning~~ ✅ RESOLVED
+Removed obsolete `version: '3.8'` line from `docker-compose.yml` (2026-02-06).
 
 ---
 
