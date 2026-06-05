@@ -1083,6 +1083,8 @@ def get_subcategories(category: Optional[str] = None):
 
 @app.get("/api/stats")
 def get_stats(
+    start_date: Optional[str] = Query(None, description="Scope income/expenses to txns on/after this date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Scope income/expenses to txns on/before this date (YYYY-MM-DD)"),
     include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
 ):
     """Get dashboard statistics"""
@@ -1090,19 +1092,54 @@ def get_stats(
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        stats_q = """
+        # Counts cover the whole pipeline (always all-time), but income/expenses
+        # use the SAME budget semantics as the Pivot "spending"/"income" views so
+        # the cards line up: real spending drops income + transfers/payments (incl.
+        # credit-card payments) + exclude_from_budget; income is inflows into
+        # is_income categories. Both are NET of the opposite direction so refunds
+        # offset. start_date/end_date scope ONLY income/expenses (not the counts);
+        # NULL => no bound (all-time).
+        date_pred = (
+            " AND (%(start)s::date IS NULL OR t.txn_date >= %(start)s::date)"
+            " AND (%(end)s::date IS NULL OR t.txn_date <= %(end)s::date)"
+        )
+        params = {"start": start_date, "end": end_date}
+        stats_q = f"""
             SELECT
                 COUNT(*) as total_transactions,
-                COUNT(*) FILTER (WHERE NOT needs_review) as categorized,
-                COUNT(*) FILTER (WHERE needs_review) as needs_review,
-                SUM(amount) FILTER (WHERE direction = 'debit') as total_expenses,
-                SUM(amount) FILTER (WHERE direction = 'credit') as total_income
-            FROM transactions
+                COUNT(*) FILTER (WHERE NOT t.needs_review) as categorized,
+                COUNT(*) FILTER (WHERE t.needs_review) as needs_review,
+                COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = FALSE
+                      AND COALESCE(tc.is_transfer, FALSE) = FALSE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.category IS NOT NULL AND t.category != ''
+                      AND t.direction = 'debit'{date_pred}
+                ), 0)
+                - COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = FALSE
+                      AND COALESCE(tc.is_transfer, FALSE) = FALSE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.category IS NOT NULL AND t.category != ''
+                      AND t.direction = 'credit'{date_pred}
+                ), 0) as total_expenses,
+                COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = TRUE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'credit'{date_pred}
+                ), 0)
+                - COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = TRUE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'debit'{date_pred}
+                ), 0) as total_income
+            FROM transactions t
+            LEFT JOIN taxonomy_categories tc ON tc.category = t.category
         """
-        # Read-only SQL transparency: echo the exact query.
-        display_sql = cursor.mogrify(stats_q).decode("utf-8") if include_sql else None
+        # Read-only SQL transparency: echo the exact query (params inlined).
+        display_sql = cursor.mogrify(stats_q, params).decode("utf-8") if include_sql else None
 
-        cursor.execute(stats_q)
+        cursor.execute(stats_q, params)
 
         stats = cursor.fetchone()
 
