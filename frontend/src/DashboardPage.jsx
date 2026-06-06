@@ -55,8 +55,20 @@ function periodRange(key) {
 
 // --- Insight computations (pure, derived from pivot data) -------------------
 
-// Spikes & dips for one target month vs the mean of up to BASELINE_MONTHS months
-// before it. Returns null if the target month has no data in the pivot.
+// Median of a numeric array (0 if empty). Used for the spike/dip baseline: a
+// lumpy recurring category (e.g. rent that double-posts in one month due to a
+// month-boundary shift) skews the mean but barely moves the median, so the
+// median gives a more representative "typical month".
+function median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+// Spikes & dips for one target month vs the typical (median) of up to
+// BASELINE_MONTHS months before it. Returns null if the target month has no
+// data in the pivot.
 function computeMovers(pivot, targetMonth) {
   const months = pivot.months || [];
   const idx = months.indexOf(targetMonth);
@@ -66,9 +78,7 @@ function computeMovers(pivot, targetMonth) {
   const movers = (pivot.categories || []).map((c) => {
     const current = c.monthly_data?.[targetMonth] || 0;
     const baseVals = baselineMonths.map((m) => c.monthly_data?.[m] || 0);
-    const baseline = baseVals.length
-      ? baseVals.reduce((a, b) => a + b, 0) / baseVals.length
-      : 0;
+    const baseline = median(baseVals);
     const delta = current - baseline;
     const pct = baseline > 0 ? delta / baseline : current > 0 ? Infinity : 0;
     return { category: c.category, current, baseline, delta, pct };
@@ -355,7 +365,7 @@ function DashboardContent({ data, periodData, period, periodLoading, navigate })
           <section className="dash-section">
             <h2>
               Spikes &amp; dips
-              {targetMonth && <span className="dash-sub"> · {fmtMonthLabel(targetMonth)} vs prior avg</span>}
+              {targetMonth && <span className="dash-sub"> · {fmtMonthLabel(targetMonth)} vs typical month</span>}
             </h2>
             {movers === null ? (
               <div className="empty">No data for this month yet.</div>
