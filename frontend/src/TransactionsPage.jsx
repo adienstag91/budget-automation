@@ -3,6 +3,7 @@ import {
   fetchTransactions,
   fetchTaxonomy,
   bulkRecategorize,
+  transactionsExportUrl,
   fmtCurrency,
 } from "./api.js";
 import RecategorizeControl from "./components/RecategorizeControl.jsx";
@@ -134,6 +135,17 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
     setAmountMinInput("");
     setAmountMaxInput("");
     setOffset(0);
+  }
+
+  // Download the full filtered set as CSV (all matching rows, not just the page).
+  function downloadCsv() {
+    const url = transactionsExportUrl(queryParams());
+    const a = document.createElement("a");
+    a.href = url;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   function toggleSort(col) {
@@ -332,6 +344,14 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
         <div className="stat">
           <b>{total.toLocaleString()}</b> match · {fmtCurrency(pageTotal)} on page
         </div>
+        <button
+          className="txn-export"
+          onClick={downloadCsv}
+          disabled={total === 0}
+          title="Download all matching transactions as CSV"
+        >
+          ⤓ CSV
+        </button>
       </div>
 
       {selected.size > 0 && (
