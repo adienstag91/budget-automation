@@ -460,6 +460,7 @@ def get_transactions(
     sort_dir: str = Query("desc", regex="^(asc|desc)$"),
     limit: int = Query(100, le=1000),
     offset: int = 0,
+    spending_only: bool = Query(False, description="Keep only real spending (drop income, transfers/payments, exclude_from_budget)"),
     include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
 ):
     """
@@ -547,6 +548,19 @@ def get_transactions(
         if category_source:
             query += " AND category_source = %s"
             params.append(category_source)
+
+        if spending_only:
+            # Real spending only: drop income + transfers/payments + excluded.
+            # Correlated subqueries avoid a taxonomy JOIN (which would make the
+            # unqualified `category` column ambiguous in the SELECT/count query).
+            query += (
+                " AND COALESCE((SELECT tc.is_income FROM taxonomy_categories tc"
+                " WHERE tc.category = transactions.category), FALSE) = FALSE"
+                " AND COALESCE((SELECT tc.is_transfer FROM taxonomy_categories tc"
+                " WHERE tc.category = transactions.category), FALSE) = FALSE"
+                " AND COALESCE(exclude_from_budget, FALSE) = FALSE"
+                " AND category IS NOT NULL AND category != ''"
+            )
 
         # Build ORDER BY clause
         order_clause = f" ORDER BY {sort_by} {sort_dir.upper()}"
@@ -1081,6 +1095,11 @@ def get_subcategories(category: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Subcategories that represent money moved into savings/investments. "Saved" =
+# net flow into these (debit outflow minus any credit withdrawals back).
+SAVINGS_SUBCATS = ["Investment Transfer", "Savings Transfer"]
+
+
 @app.get("/api/stats")
 def get_stats(
     start_date: Optional[str] = Query(None, description="Scope income/expenses to txns on/after this date (YYYY-MM-DD)"),
@@ -1103,7 +1122,7 @@ def get_stats(
             " AND (%(start)s::date IS NULL OR t.txn_date >= %(start)s::date)"
             " AND (%(end)s::date IS NULL OR t.txn_date <= %(end)s::date)"
         )
-        params = {"start": start_date, "end": end_date}
+        params = {"start": start_date, "end": end_date, "savings": SAVINGS_SUBCATS}
         stats_q = f"""
             SELECT
                 COUNT(*) as total_transactions,
@@ -1132,7 +1151,17 @@ def get_stats(
                     WHERE COALESCE(tc.is_income, FALSE) = TRUE
                       AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
                       AND t.direction = 'debit'{date_pred}
-                ), 0) as total_income
+                ), 0) as total_income,
+                COALESCE(SUM(t.amount) FILTER (
+                    WHERE t.subcategory = ANY(%(savings)s)
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'debit'{date_pred}
+                ), 0)
+                - COALESCE(SUM(t.amount) FILTER (
+                    WHERE t.subcategory = ANY(%(savings)s)
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'credit'{date_pred}
+                ), 0) as total_savings
             FROM transactions t
             LEFT JOIN taxonomy_categories tc ON tc.category = t.category
         """
@@ -1152,7 +1181,8 @@ def get_stats(
             "needs_review": stats['needs_review'],
             "categorization_rate": (stats['categorized'] / stats['total_transactions'] * 100) if stats['total_transactions'] > 0 else 0,
             "total_expenses": float(stats['total_expenses'] or 0),
-            "total_income": float(stats['total_income'] or 0)
+            "total_income": float(stats['total_income'] or 0),
+            "total_savings": float(stats['total_savings'] or 0)
         }
         if include_sql:
             result["sql"] = display_sql
