@@ -81,6 +81,46 @@ export function fetchTransactions({
   return getJSON(`/api/transactions?${params.toString()}`);
 }
 
+// Build the URL for a CSV download of the current filtered transactions (ALL
+// matching rows, no pagination). Same filter/sort shape as fetchTransactions;
+// limit/offset are ignored. Returned as a string so the caller can trigger a
+// browser download (e.g. via a temporary <a download>).
+export function transactionsExportUrl({
+  category,
+  subcategory,
+  month,
+  direction,
+  needsReview,
+  search,
+  tag,
+  categorySource,
+  dateFrom,
+  dateTo,
+  amountMin,
+  amountMax,
+  spendingOnly = false,
+  sortBy = "txn_date",
+  sortDir = "desc",
+} = {}) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  if (subcategory) params.set("subcategory", subcategory);
+  if (month) params.set("month", month);
+  if (direction) params.set("direction", direction);
+  if (needsReview != null) params.set("needs_review", String(needsReview));
+  if (search) params.set("merchant_search", search);
+  if (tag) params.set("tag", tag);
+  if (categorySource) params.set("category_source", categorySource);
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  if (amountMin != null && amountMin !== "") params.set("amount_min", String(amountMin));
+  if (amountMax != null && amountMax !== "") params.set("amount_max", String(amountMax));
+  if (spendingOnly) params.set("spending_only", "true");
+  params.set("sort_by", sortBy);
+  params.set("sort_dir", sortDir);
+  return `/api/transactions/export?${params.toString()}`;
+}
+
 // Recategorize many transactions at once (Transactions cleanup page).
 // Returns { updated }.
 export function bulkRecategorize(txnIds, { category, subcategory }) {
