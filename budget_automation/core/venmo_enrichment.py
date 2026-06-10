@@ -490,6 +490,255 @@ def apply_outgoing_enrichments(conn, enrichments: List[Dict], dry_run: bool = Fa
     print(f"   ✅ Enriched {len(enrichments)} transactions")
 
 
+def _iso(d):
+    """Date/datetime -> ISO string (JSON-safe)."""
+    return d.isoformat() if hasattr(d, 'isoformat') else str(d)
+
+
+def build_venmo_enrichment_plan(conn):
+    """
+    Read-only enrichment plan for the web preview. Writes nothing.
+
+    Loads unenriched Venmo income + outgoing payments, runs the existing matching
+    engine, and returns a unified, JSON-safe plan the UI can render and select from:
+
+        {
+          "totals": {expansions, enrich, new_rows, superseded},
+          "rows": [
+            {"kind":"expand","key":"expand:<cashout_txn_id>","date","amount",
+             "venmo_account","income":[{amount,from_name,note}, ...]},
+            {"kind":"enrich","key":"enrich:<txn_id>","date","amount",
+             "venmo_account","to_name","note"}
+          ]
+        }
+    """
+    income_payments = get_unenriched_income_payments(conn)
+    outgoing_payments = get_unenriched_outgoing_payments(conn)
+
+    cashout_expansions = find_cashout_matches(conn, income_payments)
+    outgoing_enrichments = find_outgoing_payment_matches(conn, outgoing_payments)
+
+    rows = []
+    new_rows = 0
+
+    for exp in cashout_expansions:
+        income = [
+            {
+                'amount': float(inc['amount']),
+                'from_name': inc['from_name'],
+                'note': inc['note'],
+            }
+            for inc in exp['income_payments']
+        ]
+        new_rows += len(income)
+        rows.append({
+            'kind': 'expand',
+            'key': f"expand:{exp['cashout_txn_id']}",
+            'date': _iso(exp['cashout_date']),
+            'amount': float(exp['cashout_amount']),
+            'venmo_account': exp['venmo_account'],
+            'income': income,
+        })
+
+    for enr in outgoing_enrichments:
+        p = enr['venmo_payment']
+        rows.append({
+            'kind': 'enrich',
+            'key': f"enrich:{enr['txn_id']}",
+            'date': _iso(p['date']),
+            'amount': float(p['amount']),
+            'venmo_account': enr['venmo_account'],
+            'to_name': p['to_name'],
+            'note': p['note'],
+        })
+
+    return {
+        'totals': {
+            'expansions': len(cashout_expansions),
+            'enrich': len(outgoing_enrichments),
+            'new_rows': new_rows,
+            'superseded': len(cashout_expansions),
+        },
+        'rows': rows,
+    }
+
+
+def _apply_cashout_expansion_soft(conn, expansion):
+    """
+    Soft-supersede one cashout (exclude_from_budget = TRUE, NOT deleted) and create
+    the detailed VENMO FROM rows. Does NOT commit — the caller owns the transaction.
+    """
+    import hashlib
+
+    cursor = conn.cursor()
+
+    # Soft-supersede the generic cashout instead of deleting it (reversible).
+    cursor.execute(
+        """
+        UPDATE transactions
+        SET exclude_from_budget = TRUE,
+            notes = COALESCE(notes, '') || ' [superseded by Venmo enrichment]'
+        WHERE txn_id = %s
+        """,
+        (expansion['cashout_txn_id'],),
+    )
+
+    created = 0
+    for income in expansion['income_payments']:
+        account = expansion['venmo_account']
+        description = f"Venmo (@{account}) from {income['from_name']}"
+        if income['note']:
+            description += f": {income['note']}"
+        description = description[:200]
+
+        notes = f"Venmo Account: @{account} | From: {income['from_name']}"
+        if income['note']:
+            notes += f" | Note: {income['note']}"
+
+        unique_str = f"{income['date']}_{income['amount']}_{income['from_name']}_{account}_{income.get('note', '')}"
+        hash_suffix = hashlib.md5(unique_str.encode()).hexdigest()[:8]
+
+        cursor.execute(
+            """
+            INSERT INTO transactions (
+                account_id, source, source_row_hash,
+                txn_date, post_date,
+                description_raw, merchant_raw, merchant_norm, merchant_detail,
+                amount, currency, direction, type, is_return,
+                category, subcategory,
+                category_source, category_confidence, needs_review,
+                notes, created_by
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                'USD', 'credit', 'Venmo Income', FALSE,
+                'Income', 'Other', 'venmo_expanded', 0.80, TRUE,
+                %s, 'venmo_enrichment'
+            )
+            ON CONFLICT (source_row_hash) DO NOTHING
+            """,
+            (
+                expansion['account_id'],
+                'venmo_enrichment',
+                f"venmo_exp_{hash_suffix}",
+                income['date'],
+                expansion['cashout_post_date'],
+                description[:200],
+                description[:64],
+                'VENMO FROM',
+                income['from_name'][:64],
+                income['amount'],
+                notes,
+            ),
+        )
+        created += 1
+
+    # Mark the matched Venmo income rows as enriched.
+    venmo_ids = [inc['venmo_id'] for inc in expansion['income_payments']]
+    cursor.execute(
+        """
+        UPDATE venmo_transactions_raw
+        SET enriched = TRUE, enriched_date = NOW()
+        WHERE venmo_id = ANY(%s)
+        """,
+        (venmo_ids,),
+    )
+    cursor.close()
+    return created
+
+
+def _apply_outgoing_enrichment(conn, enr):
+    """
+    Relabel one VENMO OUTGOING Chase txn into VENMO TO + payee/note (in place,
+    non-destructive). Does NOT commit — the caller owns the transaction.
+    """
+    cursor = conn.cursor()
+    payment = enr['venmo_payment']
+    account = enr['venmo_account']
+
+    notes = f"Venmo Account: @{account} | To: {payment['to_name']}"
+    if payment['note']:
+        notes += f" | Note: {payment['note']}"
+
+    cursor.execute(
+        """
+        UPDATE transactions
+        SET merchant_norm = 'VENMO TO',
+            merchant_detail = %s,
+            notes = %s,
+            created_by = 'venmo_enrichment'
+        WHERE txn_id = %s
+        """,
+        (payment['to_name'][:64], notes, enr['txn_id']),
+    )
+
+    cursor.execute(
+        """
+        UPDATE venmo_transactions_raw
+        SET enriched = TRUE, enriched_date = NOW()
+        WHERE venmo_id = %s
+        """,
+        (payment['venmo_id'],),
+    )
+    cursor.close()
+
+
+def commit_venmo_enrichment(conn, keys):
+    """
+    Apply the selected enrichment `keys` in a single DB transaction.
+
+    Recomputes the plan (so matching is fresh), filters to the selected keys, then:
+      - "expand:<cashout_txn_id>" -> soft-supersede the cashout + create VENMO FROM rows
+      - "enrich:<txn_id>"         -> relabel VENMO OUTGOING -> VENMO TO
+
+    Rolls back the whole batch on any error.
+
+    Returns: {"expanded_cashouts","new_rows","enriched_outgoing",
+              "superseded_txns","skipped"}
+    """
+    selected = set(keys or [])
+
+    income_payments = get_unenriched_income_payments(conn)
+    outgoing_payments = get_unenriched_outgoing_payments(conn)
+    cashout_expansions = find_cashout_matches(conn, income_payments)
+    outgoing_enrichments = find_outgoing_payment_matches(conn, outgoing_payments)
+
+    expand_by_key = {
+        f"expand:{e['cashout_txn_id']}": e for e in cashout_expansions
+    }
+    enrich_by_key = {
+        f"enrich:{en['txn_id']}": en for en in outgoing_enrichments
+    }
+
+    expanded_cashouts = 0
+    new_rows = 0
+    enriched_outgoing = 0
+    skipped = 0
+
+    try:
+        for key in selected:
+            if key in expand_by_key:
+                new_rows += _apply_cashout_expansion_soft(conn, expand_by_key[key])
+                expanded_cashouts += 1
+            elif key in enrich_by_key:
+                _apply_outgoing_enrichment(conn, enrich_by_key[key])
+                enriched_outgoing += 1
+            else:
+                # No longer matchable (already enriched, or data changed).
+                skipped += 1
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+    return {
+        'expanded_cashouts': expanded_cashouts,
+        'new_rows': new_rows,
+        'enriched_outgoing': enriched_outgoing,
+        'superseded_txns': expanded_cashouts,
+        'skipped': skipped,
+    }
+
+
 def enrich_venmo_transactions(dry_run: bool = False, enable_llm: bool = False):
     """
     Main enrichment process

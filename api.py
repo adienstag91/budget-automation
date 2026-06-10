@@ -2417,6 +2417,72 @@ def amazon_enrichment_commit(body: AmazonEnrichBody):
         conn.close()
 
 
+@app.post("/api/venmo/import")
+async def venmo_import(file: UploadFile = File(...)):
+    """Stage an uploaded Venmo statement CSV into venmo_transactions_raw."""
+    from budget_automation.core.venmo_import import stage_venmo_transactions
+
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 5 MB)")
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    tmp_path = None
+    conn = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".csv", delete=False
+        ) as tmp:
+            tmp.write(raw)
+            tmp_path = tmp.name
+
+        conn = get_db_connection()
+        result = stage_venmo_transactions(conn, tmp_path)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn is not None:
+            conn.close()
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+@app.get("/api/venmo/enrichment/preview")
+def venmo_enrichment_preview():
+    """Read-only Venmo enrichment plan: cashout expansions + outgoing enrichments
+    that would be applied. Writes nothing."""
+    from budget_automation.core.venmo_enrichment import build_venmo_enrichment_plan
+
+    conn = get_db_connection()
+    try:
+        return build_venmo_enrichment_plan(conn)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+class VenmoEnrichBody(BaseModel):
+    keys: List[str]
+
+
+@app.post("/api/venmo/enrichment/commit")
+def venmo_enrichment_commit(body: VenmoEnrichBody):
+    """Apply the selected Venmo enrichments in a single transaction. Soft-supersedes
+    matched VENMO CASHOUT txns (exclude_from_budget=TRUE) instead of deleting them."""
+    from budget_automation.core.venmo_enrichment import commit_venmo_enrichment
+
+    conn = get_db_connection()
+    try:
+        return commit_venmo_enrichment(conn, body.keys)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
 @app.get("/api/import/last-dates")
 def import_last_dates():
     """Latest transaction/order DATE we already hold, per import type, so the
@@ -2468,10 +2534,22 @@ def import_last_dates():
             "order_count": amz["order_count"],
         }
 
+        cursor.execute("""
+            SELECT
+                MAX(transaction_date) AS last_txn_date,
+                COUNT(*) AS txn_count
+            FROM venmo_transactions_raw
+        """)
+        vmo = cursor.fetchone()
+        venmo = {
+            "last_txn_date": vmo["last_txn_date"].isoformat() if vmo["last_txn_date"] else None,
+            "txn_count": vmo["txn_count"],
+        }
+
         cursor.close()
         conn.close()
 
-        return {"chase": chase, "amazon": amazon}
+        return {"chase": chase, "amazon": amazon, "venmo": venmo}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
