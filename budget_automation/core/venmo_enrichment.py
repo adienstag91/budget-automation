@@ -133,10 +133,14 @@ def find_subset_sum(payments: List[Dict], target: float, tolerance: float = 0.02
     return None
 
 
-def find_cashout_matches(conn, income_payments: List[Dict]) -> List[Dict]:
+def find_cashout_matches(conn, income_payments: List[Dict], lookback_days: int = 30) -> List[Dict]:
     """
     Find VENMO CASHOUT transactions and match them to income payments
-    
+
+    lookback_days controls how far before a cashout we look for funding income.
+    Longer windows match more cashouts but raise the chance of a coincidental
+    subset-sum that isn't the real funding.
+
     Returns list of expansions with cashout info and matched income payments
     """
     if not income_payments:
@@ -146,12 +150,17 @@ def find_cashout_matches(conn, income_payments: List[Dict]) -> List[Dict]:
     venmo_dates = [p['date'] for p in income_payments]
     min_venmo_date = min(venmo_dates)
     max_venmo_date = max(venmo_dates)
-    
+    # A cashout happens AFTER the income that funds it, so consider cashouts up to
+    # `lookback_days` past the latest staged income — otherwise a cashout a day
+    # after the last payment is wrongly excluded. The per-cashout lookback below
+    # still bounds which income can match.
+    max_cashout_date = max_venmo_date + timedelta(days=lookback_days)
+
     cursor = conn.cursor()
-    
-    # Find VENMO CASHOUT transactions within the Venmo data date range
+
+    # Find VENMO CASHOUT transactions in the (forward-extended) Venmo data range
     cursor.execute("""
-        SELECT 
+        SELECT
             txn_id,
             txn_date,
             post_date,
@@ -164,7 +173,7 @@ def find_cashout_matches(conn, income_payments: List[Dict]) -> List[Dict]:
           AND txn_date >= %s
           AND txn_date <= %s
         ORDER BY txn_date, amount
-    """, (min_venmo_date, max_venmo_date))
+    """, (min_venmo_date, max_cashout_date))
     
     cashouts = cursor.fetchall()
     cursor.close()
@@ -199,9 +208,9 @@ def find_cashout_matches(conn, income_payments: List[Dict]) -> List[Dict]:
         best_account = None
         
         for account_name, account_income in income_by_account.items():
-            # Look back 14 days before cashout
+            # Look back `lookback_days` before cashout
             cashout_datetime = datetime.combine(txn_date, datetime.min.time())
-            start_date = (cashout_datetime - timedelta(days=14)).date()
+            start_date = (cashout_datetime - timedelta(days=lookback_days)).date()
             
             # Get unused income payments in date range
             candidate_payments = []
@@ -495,7 +504,7 @@ def _iso(d):
     return d.isoformat() if hasattr(d, 'isoformat') else str(d)
 
 
-def build_venmo_enrichment_plan(conn):
+def build_venmo_enrichment_plan(conn, lookback_days: int = 30):
     """
     Read-only enrichment plan for the web preview. Writes nothing.
 
@@ -515,7 +524,7 @@ def build_venmo_enrichment_plan(conn):
     income_payments = get_unenriched_income_payments(conn)
     outgoing_payments = get_unenriched_outgoing_payments(conn)
 
-    cashout_expansions = find_cashout_matches(conn, income_payments)
+    cashout_expansions = find_cashout_matches(conn, income_payments, lookback_days)
     outgoing_enrichments = find_outgoing_payment_matches(conn, outgoing_payments)
 
     rows = []
@@ -682,7 +691,7 @@ def _apply_outgoing_enrichment(conn, enr):
     cursor.close()
 
 
-def commit_venmo_enrichment(conn, keys):
+def commit_venmo_enrichment(conn, keys, lookback_days: int = 30):
     """
     Apply the selected enrichment `keys` in a single DB transaction.
 
@@ -699,7 +708,7 @@ def commit_venmo_enrichment(conn, keys):
 
     income_payments = get_unenriched_income_payments(conn)
     outgoing_payments = get_unenriched_outgoing_payments(conn)
-    cashout_expansions = find_cashout_matches(conn, income_payments)
+    cashout_expansions = find_cashout_matches(conn, income_payments, lookback_days)
     outgoing_enrichments = find_outgoing_payment_matches(conn, outgoing_payments)
 
     expand_by_key = {
@@ -737,6 +746,84 @@ def commit_venmo_enrichment(conn, keys):
         'superseded_txns': expanded_cashouts,
         'skipped': skipped,
     }
+
+
+def reset_venmo_enrichment(conn, dry_run=False):
+    """
+    Revert all Venmo enrichment back to a clean baseline so it can be re-run from
+    scratch. Idempotent and reversible-by-rerun. With dry_run=True, reports the
+    counts that WOULD change without writing.
+
+    Undoes:
+      - VENMO FROM income rows created by enrichment   -> deleted
+      - VENMO TO relabels (created_by=venmo_enrichment) -> back to VENMO OUTGOING
+      - VENMO CASHOUT soft-supersedes                   -> exclude_from_budget=FALSE
+      - venmo_transactions_raw.enriched flags           -> FALSE
+
+    Returns a summary dict (also serves as the dry-run preview).
+    """
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM transactions"
+        " WHERE merchant_norm = 'VENMO FROM' AND source = 'venmo_enrichment'"
+    )
+    from_rows, from_sum = cur.fetchone()
+    cur.execute(
+        "SELECT COUNT(*) FROM transactions"
+        " WHERE merchant_norm = 'VENMO TO' AND created_by = 'venmo_enrichment'"
+    )
+    to_rows = cur.fetchone()[0]
+    cur.execute(
+        "SELECT COUNT(*) FROM transactions"
+        " WHERE merchant_norm = 'VENMO CASHOUT' AND exclude_from_budget = TRUE"
+    )
+    superseded = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM venmo_transactions_raw WHERE enriched = TRUE")
+    staged_enriched = cur.fetchone()[0]
+
+    summary = {
+        'venmo_from_deleted': from_rows,
+        'venmo_from_amount': float(from_sum),
+        'venmo_to_reverted': to_rows,
+        'cashouts_unsuperseded': superseded,
+        'staging_reset': staged_enriched,
+    }
+
+    if dry_run:
+        cur.close()
+        return summary
+
+    try:
+        # 1. Drop the enrichment-created income rows.
+        cur.execute(
+            "DELETE FROM transactions"
+            " WHERE merchant_norm = 'VENMO FROM' AND source = 'venmo_enrichment'"
+        )
+        # 2. Revert relabeled outgoing back to the generic form.
+        cur.execute(
+            "UPDATE transactions SET merchant_norm = 'VENMO OUTGOING',"
+            " merchant_detail = NULL, notes = NULL"
+            " WHERE merchant_norm = 'VENMO TO' AND created_by = 'venmo_enrichment'"
+        )
+        # 3. Un-supersede cashouts and strip the marker note.
+        cur.execute(
+            "UPDATE transactions SET exclude_from_budget = FALSE,"
+            " notes = NULLIF(REPLACE(COALESCE(notes, ''),"
+            " ' [superseded by Venmo enrichment]', ''), '')"
+            " WHERE merchant_norm = 'VENMO CASHOUT' AND exclude_from_budget = TRUE"
+        )
+        # 4. Free all staged Venmo rows for a fresh match.
+        cur.execute(
+            "UPDATE venmo_transactions_raw SET enriched = FALSE, enriched_date = NULL"
+            " WHERE enriched = TRUE"
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    cur.close()
+    return summary
 
 
 def enrich_venmo_transactions(dry_run: bool = False, enable_llm: bool = False):

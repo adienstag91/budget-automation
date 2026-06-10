@@ -23,6 +23,7 @@ const EMPTY_FILTERS = {
   dateTo: "",
   amountMin: "",
   amountMax: "",
+  hideExcluded: false,
 };
 
 // The Transactions cleanup page. Filter / search / sort across every
@@ -90,6 +91,7 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
       dateTo: filters.dateTo || undefined,
       amountMin: filters.amountMin || undefined,
       amountMax: filters.amountMax || undefined,
+      hideExcluded: filters.hideExcluded || undefined,
       sortBy: sort.by,
       sortDir: sort.dir,
       limit: PAGE_SIZE,
@@ -337,6 +339,14 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
             onChange={(e) => setAmountMaxInput(e.target.value)}
           />
         </label>
+        <label className="txn-toggle" title="Hide rows excluded from the budget (e.g. enriched/superseded cashouts)">
+          <input
+            type="checkbox"
+            checked={filters.hideExcluded}
+            onChange={(e) => setFilter("hideExcluded", e.target.checked)}
+          />
+          Hide excluded
+        </label>
         <button className="txn-clear" onClick={clearFilters}>
           Clear
         </button>
@@ -451,9 +461,16 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
                 {rows.map((t) => {
                   const isSelected = selected.has(t.txn_id);
                   const isOpen = expanded.has(t.txn_id);
+                  const isExcluded = t.exclude_from_budget;
                   return (
                     <React.Fragment key={t.txn_id}>
-                      <tr className={isSelected ? "txn-row selected" : "txn-row"}>
+                      <tr
+                        className={
+                          "txn-row" +
+                          (isSelected ? " selected" : "") +
+                          (isExcluded ? " excluded" : "")
+                        }
+                      >
                         <td className="col-check">
                           <input
                             type="checkbox"
@@ -470,6 +487,14 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
                           {t.needs_review ? (
                             <span className="review-flag" title="Needs review">
                               ⚑
+                            </span>
+                          ) : null}
+                          {isExcluded ? (
+                            <span
+                              className="excluded-badge"
+                              title="Excluded from budget — superseded by enrichment (e.g. a Venmo cashout itemized into its individual payments). Kept for reference, but not counted in pivot or dashboard totals."
+                            >
+                              excluded
                             </span>
                           ) : null}
                         </td>

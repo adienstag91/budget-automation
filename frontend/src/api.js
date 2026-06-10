@@ -56,10 +56,12 @@ export function fetchTransactions({
   limit = 200,
   offset = 0,
   spendingOnly = false,
+  hideExcluded = false,
   includeSql = false,
 } = {}) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (spendingOnly) params.set("spending_only", "true");
+  if (hideExcluded) params.set("hide_excluded", "true");
   if (category) params.set("category", category);
   if (subcategory) params.set("subcategory", subcategory);
   if (month) params.set("month", month);
