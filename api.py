@@ -2300,14 +2300,16 @@ async def venmo_import(file: UploadFile = File(...)):
 
 
 @app.get("/api/venmo/enrichment/preview")
-def venmo_enrichment_preview():
+def venmo_enrichment_preview(lookback_days: int = Query(30, ge=1, le=120)):
     """Read-only Venmo enrichment plan: cashout expansions + outgoing enrichments
-    that would be applied. Writes nothing."""
+    that would be applied. Writes nothing. lookback_days controls how far before a
+    cashout to look for funding income (longer = more matches but more risk of a
+    coincidental subset-sum)."""
     from budget_automation.core.venmo_enrichment import build_venmo_enrichment_plan
 
     conn = get_db_connection()
     try:
-        return build_venmo_enrichment_plan(conn)
+        return build_venmo_enrichment_plan(conn, lookback_days=lookback_days)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -2316,6 +2318,7 @@ def venmo_enrichment_preview():
 
 class VenmoEnrichBody(BaseModel):
     keys: List[str]
+    lookback_days: int = 30
 
 
 @app.post("/api/venmo/enrichment/commit")
@@ -2326,7 +2329,24 @@ def venmo_enrichment_commit(body: VenmoEnrichBody):
 
     conn = get_db_connection()
     try:
-        return commit_venmo_enrichment(conn, body.keys)
+        return commit_venmo_enrichment(conn, body.keys, lookback_days=body.lookback_days)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.post("/api/venmo/enrichment/reset")
+def venmo_enrichment_reset(dry_run: bool = Query(False)):
+    """Revert ALL Venmo enrichment to a clean baseline so it can be re-run from
+    scratch (deletes VENMO FROM rows, reverts VENMO TO -> VENMO OUTGOING,
+    un-supersedes cashouts, clears staging enriched flags). Pass dry_run=true to
+    preview the counts without writing."""
+    from budget_automation.core.venmo_enrichment import reset_venmo_enrichment
+
+    conn = get_db_connection()
+    try:
+        return reset_venmo_enrichment(conn, dry_run=dry_run)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
