@@ -9,6 +9,7 @@ Run with: uvicorn api:app --reload --port 8000
 
 from fastapi import FastAPI, HTTPException, Query, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from datetime import datetime, date
 from typing import Optional, List
 import psycopg2
@@ -16,6 +17,8 @@ from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
 import os
 import tempfile
+import io
+import csv
 
 # Load .env so the API process has ANTHROPIC_API_KEY (LLM categorization) and
 # DB_* regardless of how uvicorn was launched. Without this, LLMCategorizer
@@ -440,6 +443,74 @@ def get_subcategories(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _txn_filter_clause(
+    *, category=None, subcategory=None, month=None, needs_review=None,
+    direction=None, merchant_search=None, tag=None, category_source=None,
+    date_from=None, date_to=None, amount_min=None, amount_max=None,
+    spending_only=False,
+):
+    """Build the shared WHERE suffix (after `WHERE 1=1`) + params for the
+    transactions list and CSV export, so an export matches the table exactly.
+    Returns (clause, params). Amount filters compare the stored positive
+    magnitude (sign is carried by `direction`), matching what the UI shows."""
+    clause = ""
+    params = []
+    if direction:
+        clause += " AND direction = %s"
+        params.append(direction)
+    if category:
+        clause += " AND category = %s"
+        params.append(category)
+    if subcategory:
+        clause += " AND subcategory = %s"
+        params.append(subcategory)
+    if month:  # YYYY-MM
+        clause += " AND TO_CHAR(DATE_TRUNC('month', txn_date), 'YYYY-MM') = %s"
+        params.append(month)
+    if date_from:
+        clause += " AND txn_date >= %s"
+        params.append(date_from)
+    if date_to:
+        clause += " AND txn_date <= %s"
+        params.append(date_to)
+    if amount_min is not None:
+        clause += " AND amount >= %s"
+        params.append(amount_min)
+    if amount_max is not None:
+        clause += " AND amount <= %s"
+        params.append(amount_max)
+    if needs_review is not None:
+        clause += " AND needs_review = %s"
+        params.append(needs_review)
+    if merchant_search:
+        # Free-text search across merchant, raw description, and notes.
+        clause += (
+            " AND (merchant_norm ILIKE %s OR description_raw ILIKE %s"
+            " OR COALESCE(notes, '') ILIKE %s)"
+        )
+        like = f"%{merchant_search}%"
+        params.extend([like, like, like])
+    if tag:
+        clause += " AND %s = ANY(tags)"
+        params.append(tag)
+    if category_source:
+        clause += " AND category_source = %s"
+        params.append(category_source)
+    if spending_only:
+        # Real spending only: drop income + transfers/payments + excluded.
+        # Correlated subqueries avoid a taxonomy JOIN (which would make the
+        # unqualified `category` column ambiguous in the SELECT/count query).
+        clause += (
+            " AND COALESCE((SELECT tc.is_income FROM taxonomy_categories tc"
+            " WHERE tc.category = transactions.category), FALSE) = FALSE"
+            " AND COALESCE((SELECT tc.is_transfer FROM taxonomy_categories tc"
+            " WHERE tc.category = transactions.category), FALSE) = FALSE"
+            " AND COALESCE(exclude_from_budget, FALSE) = FALSE"
+            " AND category IS NOT NULL AND category != ''"
+        )
+    return clause, params
+
+
 @app.get("/api/transactions")
 def get_transactions(
     category: Optional[str] = None,
@@ -460,6 +531,7 @@ def get_transactions(
     sort_dir: str = Query("desc", regex="^(asc|desc)$"),
     limit: int = Query(100, le=1000),
     offset: int = 0,
+    spending_only: bool = Query(False, description="Keep only real spending (drop income, transfers/payments, exclude_from_budget)"),
     hide_excluded: bool = Query(False, description="Drop rows flagged exclude_from_budget (e.g. enriched/superseded cashouts)"),
     include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
 ):
@@ -490,65 +562,15 @@ def get_transactions(
             WHERE 1=1
         """
 
-        params = []
-
-        if direction:
-            query += " AND direction = %s"
-            params.append(direction)
-
-        if category:
-            query += " AND category = %s"
-            params.append(category)
-        
-        if subcategory:
-            query += " AND subcategory = %s"
-            params.append(subcategory)
-        
-        if month:
-            # Month format: YYYY-MM
-            query += " AND TO_CHAR(DATE_TRUNC('month', txn_date), 'YYYY-MM') = %s"
-            params.append(month)
-        
-        if date_from:
-            query += " AND txn_date >= %s"
-            params.append(date_from)
-        
-        if date_to:
-            query += " AND txn_date <= %s"
-            params.append(date_to)
-
-        # Amount filters compare against the stored magnitude (amounts are stored
-        # positive; the sign is carried by `direction`), which matches what the
-        # UI shows the user.
-        if amount_min is not None:
-            query += " AND amount >= %s"
-            params.append(amount_min)
-
-        if amount_max is not None:
-            query += " AND amount <= %s"
-            params.append(amount_max)
-
-        if needs_review is not None:
-            query += " AND needs_review = %s"
-            params.append(needs_review)
-        
-        if merchant_search:
-            # Free-text search across merchant, raw description, and notes.
-            query += (
-                " AND (merchant_norm ILIKE %s OR description_raw ILIKE %s"
-                " OR COALESCE(notes, '') ILIKE %s)"
-            )
-            like = f"%{merchant_search}%"
-            params.extend([like, like, like])
-
-        if tag:
-            # Match transactions carrying this exact tag (tags is a text[]).
-            query += " AND %s = ANY(tags)"
-            params.append(tag)
-
-        if category_source:
-            query += " AND category_source = %s"
-            params.append(category_source)
+        clause, params = _txn_filter_clause(
+            category=category, subcategory=subcategory, month=month,
+            needs_review=needs_review, direction=direction,
+            merchant_search=merchant_search, tag=tag,
+            category_source=category_source, date_from=date_from,
+            date_to=date_to, amount_min=amount_min, amount_max=amount_max,
+            spending_only=spending_only,
+        )
+        query += clause
 
         if hide_excluded:
             query += " AND COALESCE(exclude_from_budget, FALSE) = FALSE"
@@ -628,6 +650,88 @@ def get_transactions(
         import traceback
         print(f"Error in /api/transactions: {str(e)}")
         print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/transactions/export")
+def export_transactions(
+    category: Optional[str] = None,
+    subcategory: Optional[str] = None,
+    month: Optional[str] = None,
+    needs_review: Optional[bool] = None,
+    direction: Optional[str] = Query(None, regex="^(debit|credit)$"),
+    merchant_search: Optional[str] = None,
+    tag: Optional[str] = None,
+    category_source: Optional[str] = Query(
+        None, regex="^(rule|llm|manual|none|venmo_expanded)$"
+    ),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    amount_min: Optional[float] = None,
+    amount_max: Optional[float] = None,
+    spending_only: bool = Query(False),
+    sort_by: str = Query("txn_date", regex="^(txn_date|amount|merchant_norm|category)$"),
+    sort_dir: str = Query("desc", regex="^(asc|desc)$"),
+):
+    """Export the current filtered transactions as a CSV download — ALL matching
+    rows (no pagination). Filters mirror /api/transactions exactly via the shared
+    _txn_filter_clause helper, so the file matches what the table shows."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        query = """
+            SELECT txn_id, txn_date, merchant_norm, merchant_detail,
+                   description_raw, amount, direction, category, subcategory,
+                   needs_review, notes, tags
+            FROM transactions
+            WHERE 1=1
+        """
+        clause, params = _txn_filter_clause(
+            category=category, subcategory=subcategory, month=month,
+            needs_review=needs_review, direction=direction,
+            merchant_search=merchant_search, tag=tag,
+            category_source=category_source, date_from=date_from,
+            date_to=date_to, amount_min=amount_min, amount_max=amount_max,
+            spending_only=spending_only,
+        )
+        query += clause + f" ORDER BY {sort_by} {sort_dir.upper()}"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow([
+            "txn_id", "txn_date", "merchant_norm", "merchant_detail",
+            "description_raw", "amount", "direction", "category",
+            "subcategory", "needs_review", "notes", "tags",
+        ])
+        for r in rows:
+            writer.writerow([
+                r["txn_id"],
+                r["txn_date"].strftime("%Y-%m-%d"),
+                r["merchant_norm"],
+                r["merchant_detail"],
+                r["description_raw"],
+                float(r["amount"]),
+                r["direction"],
+                r["category"],
+                r["subcategory"],
+                r["needs_review"],
+                r["notes"],
+                "|".join(r["tags"] or []),
+            ])
+
+        filename = f"transactions_{datetime.now().strftime('%Y%m%d')}.csv"
+        return Response(
+            content=buf.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1088,8 +1192,15 @@ def get_subcategories(category: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Subcategories that represent money moved into savings/investments. "Saved" =
+# net flow into these (debit outflow minus any credit withdrawals back).
+SAVINGS_SUBCATS = ["Investment Transfer", "Savings Transfer"]
+
+
 @app.get("/api/stats")
 def get_stats(
+    start_date: Optional[str] = Query(None, description="Scope income/expenses to txns on/after this date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Scope income/expenses to txns on/before this date (YYYY-MM-DD)"),
     include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
 ):
     """Get dashboard statistics"""
@@ -1097,19 +1208,64 @@ def get_stats(
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        stats_q = """
+        # Counts cover the whole pipeline (always all-time), but income/expenses
+        # use the SAME budget semantics as the Pivot "spending"/"income" views so
+        # the cards line up: real spending drops income + transfers/payments (incl.
+        # credit-card payments) + exclude_from_budget; income is inflows into
+        # is_income categories. Both are NET of the opposite direction so refunds
+        # offset. start_date/end_date scope ONLY income/expenses (not the counts);
+        # NULL => no bound (all-time).
+        date_pred = (
+            " AND (%(start)s::date IS NULL OR t.txn_date >= %(start)s::date)"
+            " AND (%(end)s::date IS NULL OR t.txn_date <= %(end)s::date)"
+        )
+        params = {"start": start_date, "end": end_date, "savings": SAVINGS_SUBCATS}
+        stats_q = f"""
             SELECT
                 COUNT(*) as total_transactions,
-                COUNT(*) FILTER (WHERE NOT needs_review) as categorized,
-                COUNT(*) FILTER (WHERE needs_review) as needs_review,
-                SUM(amount) FILTER (WHERE direction = 'debit') as total_expenses,
-                SUM(amount) FILTER (WHERE direction = 'credit') as total_income
-            FROM transactions
+                COUNT(*) FILTER (WHERE NOT t.needs_review) as categorized,
+                COUNT(*) FILTER (WHERE t.needs_review) as needs_review,
+                COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = FALSE
+                      AND COALESCE(tc.is_transfer, FALSE) = FALSE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.category IS NOT NULL AND t.category != ''
+                      AND t.direction = 'debit'{date_pred}
+                ), 0)
+                - COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = FALSE
+                      AND COALESCE(tc.is_transfer, FALSE) = FALSE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.category IS NOT NULL AND t.category != ''
+                      AND t.direction = 'credit'{date_pred}
+                ), 0) as total_expenses,
+                COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = TRUE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'credit'{date_pred}
+                ), 0)
+                - COALESCE(SUM(t.amount) FILTER (
+                    WHERE COALESCE(tc.is_income, FALSE) = TRUE
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'debit'{date_pred}
+                ), 0) as total_income,
+                COALESCE(SUM(t.amount) FILTER (
+                    WHERE t.subcategory = ANY(%(savings)s)
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'debit'{date_pred}
+                ), 0)
+                - COALESCE(SUM(t.amount) FILTER (
+                    WHERE t.subcategory = ANY(%(savings)s)
+                      AND COALESCE(t.exclude_from_budget, FALSE) = FALSE
+                      AND t.direction = 'credit'{date_pred}
+                ), 0) as total_savings
+            FROM transactions t
+            LEFT JOIN taxonomy_categories tc ON tc.category = t.category
         """
-        # Read-only SQL transparency: echo the exact query.
-        display_sql = cursor.mogrify(stats_q).decode("utf-8") if include_sql else None
+        # Read-only SQL transparency: echo the exact query (params inlined).
+        display_sql = cursor.mogrify(stats_q, params).decode("utf-8") if include_sql else None
 
-        cursor.execute(stats_q)
+        cursor.execute(stats_q, params)
 
         stats = cursor.fetchone()
 
@@ -1122,7 +1278,8 @@ def get_stats(
             "needs_review": stats['needs_review'],
             "categorization_rate": (stats['categorized'] / stats['total_transactions'] * 100) if stats['total_transactions'] > 0 else 0,
             "total_expenses": float(stats['total_expenses'] or 0),
-            "total_income": float(stats['total_income'] or 0)
+            "total_income": float(stats['total_income'] or 0),
+            "total_savings": float(stats['total_savings'] or 0)
         }
         if include_sql:
             result["sql"] = display_sql
