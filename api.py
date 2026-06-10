@@ -483,7 +483,8 @@ def get_transactions(
                 subcategory,
                 needs_review,
                 notes,
-                tags
+                tags,
+                exclude_from_budget
             FROM transactions
             WHERE 1=1
         """
@@ -565,7 +566,8 @@ def get_transactions(
                 subcategory,
                 needs_review,
                 notes,
-                tags""",
+                tags,
+                exclude_from_budget""",
             "SELECT COUNT(*) as count"
         )
         
@@ -599,7 +601,8 @@ def get_transactions(
                 "subcategory": row['subcategory'],
                 "needs_review": row['needs_review'],
                 "notes": row['notes'],
-                "tags": row['tags'] or []
+                "tags": row['tags'] or [],
+                "exclude_from_budget": row['exclude_from_budget']
             })
         
         cursor.close()
