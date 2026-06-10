@@ -431,9 +431,16 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
                 {rows.map((t) => {
                   const isSelected = selected.has(t.txn_id);
                   const isOpen = expanded.has(t.txn_id);
+                  const isExcluded = t.exclude_from_budget;
                   return (
                     <React.Fragment key={t.txn_id}>
-                      <tr className={isSelected ? "txn-row selected" : "txn-row"}>
+                      <tr
+                        className={
+                          "txn-row" +
+                          (isSelected ? " selected" : "") +
+                          (isExcluded ? " excluded" : "")
+                        }
+                      >
                         <td className="col-check">
                           <input
                             type="checkbox"
@@ -450,6 +457,14 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
                           {t.needs_review ? (
                             <span className="review-flag" title="Needs review">
                               ⚑
+                            </span>
+                          ) : null}
+                          {isExcluded ? (
+                            <span
+                              className="excluded-badge"
+                              title="Excluded from budget — superseded by enrichment (e.g. a Venmo cashout itemized into its individual payments). Kept for reference, but not counted in pivot or dashboard totals."
+                            >
+                              excluded
                             </span>
                           ) : null}
                         </td>

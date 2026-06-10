@@ -1145,6 +1145,31 @@ body {
   font-size: 12px;
 }
 
+/* Rows excluded from the budget (e.g. an enriched/superseded Venmo cashout):
+   muted + struck-through amount, with an "excluded" pill, so it's clear they're
+   kept for reference but don't count toward totals. */
+.txn-row.excluded td {
+  color: var(--muted);
+  background: #fafbfc;
+}
+.txn-row.excluded .col-amount {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.excluded-badge {
+  margin-left: 6px;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #eceef1;
+  color: #6b7280;
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: help;
+  vertical-align: middle;
+}
+
 .col-amount.credit {
   color: #1e7e34;
 }
