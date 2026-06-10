@@ -55,9 +55,11 @@ export function fetchTransactions({
   sortDir = "desc",
   limit = 200,
   offset = 0,
+  hideExcluded = false,
   includeSql = false,
 } = {}) {
   const params = new URLSearchParams({ limit: String(limit) });
+  if (hideExcluded) params.set("hide_excluded", "true");
   if (category) params.set("category", category);
   if (subcategory) params.set("subcategory", subcategory);
   if (month) params.set("month", month);
