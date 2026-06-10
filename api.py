@@ -460,6 +460,7 @@ def get_transactions(
     sort_dir: str = Query("desc", regex="^(asc|desc)$"),
     limit: int = Query(100, le=1000),
     offset: int = 0,
+    hide_excluded: bool = Query(False, description="Drop rows flagged exclude_from_budget (e.g. enriched/superseded cashouts)"),
     include_sql: bool = Query(False, description="Echo back the read-only SQL that produced this view")
 ):
     """
@@ -548,6 +549,9 @@ def get_transactions(
         if category_source:
             query += " AND category_source = %s"
             params.append(category_source)
+
+        if hide_excluded:
+            query += " AND COALESCE(exclude_from_budget, FALSE) = FALSE"
 
         # Build ORDER BY clause
         order_clause = f" ORDER BY {sort_by} {sort_dir.upper()}"

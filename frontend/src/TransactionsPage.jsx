@@ -22,6 +22,7 @@ const EMPTY_FILTERS = {
   dateTo: "",
   amountMin: "",
   amountMax: "",
+  hideExcluded: false,
 };
 
 // The Transactions cleanup page. Filter / search / sort across every
@@ -89,6 +90,7 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
       dateTo: filters.dateTo || undefined,
       amountMin: filters.amountMin || undefined,
       amountMax: filters.amountMax || undefined,
+      hideExcluded: filters.hideExcluded || undefined,
       sortBy: sort.by,
       sortDir: sort.dir,
       limit: PAGE_SIZE,
@@ -324,6 +326,14 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
             value={amountMaxInput}
             onChange={(e) => setAmountMaxInput(e.target.value)}
           />
+        </label>
+        <label className="txn-toggle" title="Hide rows excluded from the budget (e.g. enriched/superseded cashouts)">
+          <input
+            type="checkbox"
+            checked={filters.hideExcluded}
+            onChange={(e) => setFilter("hideExcluded", e.target.checked)}
+          />
+          Hide excluded
         </label>
         <button className="txn-clear" onClick={clearFilters}>
           Clear
