@@ -10,6 +10,12 @@ data/uploads/*.CSV
 data/exports/*
 exports/*
 
+# Personal analysis exports (real spending data)
+*_analysis.csv
+
+# Claude Code local plans / memory (machine-specific)
+.claude/
+
 # Personal configuration with credentials
 .env
 config/personal.yaml
