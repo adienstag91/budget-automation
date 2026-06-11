@@ -1,375 +1,71 @@
-# Budget Automation - Product Roadmap
+# Budget Automation — Roadmap
 
-## 🎯 Vision
-Personal budgeting system with automated categorization, enrichment, and actionable insights for joint household finances.
+_Last updated: 2026-06-10_
 
----
+## Vision
+A personal budgeting system for joint household finances: import bank/Venmo/Amazon
+data, auto-categorize most of it with learned rules, enrich the opaque bits
+(Amazon line items, Venmo balance activity), and surface actionable insights.
 
-# 🗺️ Active Roadmap (React Pivot App) — updated 2026-06-02
+## Architecture
+React pivot app (`frontend/`) → FastAPI (`api.py`) → PostgreSQL (Docker, port 5433).
+See `README.md` for setup and run instructions.
 
-The frontend moved from Streamlit to a **React pivot app** (`frontend/`) backed
-by **FastAPI** (`api.py`) → PostgreSQL. The Excel-style pivot (category >
-subcategory > months, with drilldown + recategorize) is built and working.
-
-Goal: get to a real production state for making budgeting decisions now that
-there's regular income to manage.
-
-## The core loop (what this whole system is for)
-Each upload → rules auto-categorize most transactions → whatever's left lands in
-the **needs-review** queue → you recategorize it and (optionally) create a rule →
-that rule catches the same merchant **automatically next time**. So the queue
-should shrink with every import. Clearing the current 96 well = fewer surprises
-on the next upload. This is the feedback loop, and it's already how the pipeline
-works.
-
-## Sequencing principles
-1. **DB correct & trustworthy first** — decisions need a clean, well-set-up DB.
-2. **Foundations before leaves** — build what other features depend on early.
-3. **Interleave quick wins** — cheap high-value items keep momentum.
-
-## Phase 0 — DB Setup & Trust (do first)
-Goal: confirm the database is set up correctly and the numbers are trustworthy
-**before** the next big upload.
-- [x] **DB health pass** (2026-06-02) — schema/indexes healthy (dedup unique on
-      `source_row_hash`, partial indexes on `needs_review`/`exclude_from_budget`, GIN on
-      `tags`). 5,932 txns / 2 Chase accounts / 232 rules / 17 categories / 130 subcats.
-      **Taxonomy integrity perfect** (0 dangling cat/subcat refs, 0 orphan rows).
-      **Pivot reconciles exactly** to raw SQL ($110,633.57 debit, Jul–Dec 2025). Clean
-      data: no dupes, no null dates/dirs/hashes, no future dates. Findings to act on:
-      (a) pivot counts `Transfers & Payments` (~$65k / 59% of that window) as "spending" —
-      it ignores the existing `is_transfer` / `exclude_from_budget` flags → fix with the
-      income/expense + transfer-exclusion work; (b) 1 miscategorized outflow (txn 30270,
-      a $300 CHECK tagged `Income/Other`); (c) 1 harmless $0.00 Amazon line (txn 43899);
-      (d) Chase **Checking** only has Dec-2025 loaded (51 txns) — older checking history
-      missing (covered by "Import newer statements"). Queue down to **42** needs-review.
-- [x] **Decide the unused tag columns** — resolved: renamed to
-      `category_source` / `category_confidence` (provenance) and `tags TEXT[]` (real tags,
-      GIN-indexed). Kept and in use. (See note below.)
-- [ ] **Clear the 42 needs-review** transactions — recategorize each and create
-      rules where it makes sense, *so the next upload needs less review.*
-      Review Queue screen is built; queue is down from 96 → 42.
-- [x] **Import + enrichment UX** (Chase CSV + Amazon) — *(done 2026-06-02)* new
-      `/import` page (`frontend/src/ImportPage.jsx`) with a two-step **upload →
-      preview → confirm** flow; nothing is written to the DB until the user approves
-      a parsed preview. Backend: shared `import_service` (`categorize_parsed` +
-      `insert_transactions`) reused by both the CLI and the new API
-      (`/api/import/preview`, `/api/import/commit`); the importer + LLM now read the
-      **taxonomy from the DB** (`taxonomy_db.load_taxonomy_from_db`), retiring the
-      `taxonomy.json` dependency in the import path. Amazon: `/api/amazon/import`
-      (stage), `/api/amazon/enrichment/preview` (read-only plan), and
-      `/api/amazon/enrichment/commit` — the destructive hard-delete of the matched
-      card txn is replaced by a **reversible soft-supersede** (`exclude_from_budget
-      = TRUE`, which the pivot already filters out). LLM cost is paid only on
-      preview; commit trusts the previewed rows (re-validated against the taxonomy,
-      not re-LLM'd). Verified e2e + in-browser. **Venmo enrichment web surface
-      deferred** (CLI stays) — follow-up after Amazon proves the pattern.
-- [ ] **Import newer statements** (Chase checking + credit past Jan 5) — only
-      after the above, so they import into a clean system.
-
-### Note on the "tag" columns (resolved — renamed for clarity)
-There were two unrelated things confusingly both called "tag":
-- The old `tag_source` / `tag_confidence` columns were **categorization
-  provenance**, not tags — they record *how* each txn was categorized (`rule`,
-  `llm`, `manual`, etc.) and the confidence, and drive `needs_review`.
-  **Renamed to `category_source` / `category_confidence`** across DB + code.
-- `trip_tag` was the **real** manual/ad-hoc tag concept. **Renamed to `tags`
-  and changed to a `TEXT[]` array** (multiple tags per txn, e.g.
-  `{Hawaii, anniversary}`), with a GIN index. Still empty — populated via UI when
-  built. No longer trip-specific.
-
-## Phase 1 — Core View Power (quick wins, high value)
-Goal: slice the pivot the way you actually think.
-- [x] **Income vs expense filter** (done 2026-06-02) — pivot `view` param
-      (`expense` default / `income` / `all`) that honors the `is_transfer` /
-      `is_income` / `exclude_from_budget` flags in SQL, so transfers/payments no
-      longer inflate spending. All three views reconcile exactly to raw SQL.
-- [ ] **Search / view by category, subcategory, or merchant** (reuses drilldown)
-- [ ] **Conditional formatting** — highlight unusually high month cells
-- [x] **Edit an individual transaction's date** (manual edit) — *(done 2026-06-02)*
-      recurring bills often land a day early/late around weekends + month boundaries
-      (e.g. last-day-of-month vs first-of-next), which shows up as one month
-      double-billed and the next month empty (seen on electricity). Date is editable
-      inline from the drilldown via `DateEditControl`. Scope: **manual edit only** —
-      ad-hoc purchases landing a day off don't matter; this is for the **recurring
-      payments**, which conditional formatting (above) will flag (the double-bill /
-      zero-bill discrepancy). A date edit is **not** a recategorization (leaves
-      `category_source`/`needs_review` alone) and deliberately **leaves
-      `source_row_hash` untouched** — the hash is computed once at import from the
-      original CSV row, so a re-import of the same statement still recomputes the
-      original hash and dedups correctly.
-
-## Phase 2 — Tagging (deprioritized — only if you want it)
-Tagging is **not a priority**. The `tags TEXT[]` column already exists (empty)
-with a GIN index, so the data model is done — only the UI/API remain.
-- [ ] (optional) **Use `tags`** — add/remove multiple tags on a txn (drilldown)
-- [ ] (optional) **Filter / total by tag** — "show everything tagged Hawaii"
-
-## Phase 3 — Taxonomy Management (Taxonomy Management page)
-Goal: manage the category tree from a dedicated FE page **without touching SQL**,
-where every edit **cascades to the underlying transactions and rules**. This is the
-single audited path for all future taxonomy changes.
-
-### Why this is needed (context)
-The taxonomy currently has **duplicate/parallel categories** from an earlier redesign:
-the **legacy** set holds all the real data (`Housing & Utilities` 157 txns,
-`Pet Care`, etc.), while a **newer near-empty** set (`Housing`, `Home`, `Charity`,
-`Education`, `Personal`, `Pet`; `display_order >= 100`, created 2026-02-04) holds only
-**2 stray Amazon txns total** and is referenced by **zero merchant_rules**. Both sets
-appear in the recategorize dropdown, which is confusing. We deliberately deferred
-cleaning these up so it goes through this page rather than hand-written SQL.
-
-### Core capability (the reusable operation)
-**Rename / merge a (sub)category and cascade** to all references in one DB
-transaction. This same operation powers: consolidating the duplicates, building a
-"Bills & Utilities" reorg, and any future reorganization.
-
-> **Source of truth:** the **DB is authoritative** for the taxonomy.
-> `data/taxonomy/taxonomy.json` + `budget_automation/tools/taxonomy_sync.py` are
-> **retired** (the JSON had drifted stale/partial) — do not run sync anymore; manage
-> the tree through this page / the `/api/taxonomy/*` endpoints.
-
-### Backend (done 2026-06-02)
-- [x] **Category/subcategory tree CRUD** — add / rename / move / merge / delete
-      (`/api/taxonomy/categories*`, `/api/taxonomy/subcategories*` in `api.py`).
-- [x] **Cascading update endpoints** (single DB transaction each):
-      - rename `(category)` → updates `transactions.category`,
-        `taxonomy_subcategories.category`, `merchant_rules.category`.
-      - rename/move `(category, subcategory)` → updates `transactions` + `merchant_rules`
-        composite refs.
-      - merge B into A → re-point all txns/rules from B to A, then delete B.
-      - move a subcategory to a different parent category.
-      FKs handled: `taxonomy_categories.category` is the PRIMARY KEY (no
-      `ON UPDATE CASCADE`), so renames insert the target, re-point children, then
-      delete the source — all in one txn. Re-points **preserve**
-      `category_source` / `category_confidence` / `needs_review` (a structural relabel
-      is not a manual recategorization).
-- [x] **Guardrails** — delete of a non-empty (sub)category returns 409 ("merge instead");
-      `GET /api/taxonomy/tree` returns per-node `txn_count` / `rule_count` for the
-      "affects N" preview; every mutation is transactional with rollback.
-
-### Frontend (done 2026-06-02 — `/settings/taxonomy` under a new **Settings** nav section)
-- [x] Tree view of categories → subcategories with txn/rule counts per node.
-- [x] Add / rename / move / merge / delete actions with an **"affects N transactions,
-      M rules"** confirmation before applying (delete disabled for non-empty nodes).
-
-### First jobs to run once the page exists
-- [x] **Drop the 6 empty/stray "new" categories** (`Charity`, `Education`, `Home`,
-      `Housing`, `Personal`, `Pet`) — done 2026-06-02 via the API. Reassigned the 2 stray
-      Amazon txns first (Swiffer → `Shopping / Home`; IAMS dog food →
-      `Pet Care / Food/Supplies`), then deleted all 6. Taxonomy is back to the 17 legacy
-      categories with no orphaned subcategory rows.
-- [ ] **"Bills & Utilities" reorg** — create a `Bills & Utilities` category and move the
-      recurring-bill subcategories into it (e.g. rent, gas/electric, wifi, taxes, car
-      payment, **life insurance**). This is a cross-category move (pulls from
-      `Housing & Utilities`, `Transportation`, …) so exact membership needs to be
-      decided deliberately — do it via this page, not by hand. `Life Insurance`
-      currently lives under `Housing & Utilities` as an interim home (see note below).
-
-### Done in advance (interim, 2026-06-02 — Northwestern fix)
-- [x] Added a `Life Insurance` subcategory under the legacy `Housing & Utilities`
-      (will move into `Bills & Utilities` during the reorg above).
-- [x] Normalizer alias `NORTHWESTERN MU → NORTHWESTERN` so ACH-style descriptions
-      (`... ISA PYMENT PPD ID: ...`) match going forward; retargeted rule #35 from
-      `Home Insurance` → `Life Insurance`; recategorized all 24 Northwestern txns.
-
-## Phase 4 — Insights
-Goal: understand trends, not just totals.
-- [ ] **Trend-per-category** — click a category/subcategory → line chart over months
-- [ ] **Dashboard home** — top categories, monthly totals, income vs expense,
-      biggest movers (best once data is clean + tagged)
-
-## Cross-cutting (whenever it fits)
-- [x] Fix the duplicate-detection bug (TECH_DEBT) **before** bulk imports —
-      *(done 2026-06-02)* the dedup hash dropped the fragile `row_index` (which
-      shifted when unrelated rows moved) in favor of a stable
-      `txn_date|description_raw|amount|account_id|occurrence` content key with a
-      per-file occurrence counter, so re-imports of the same statement dedup
-      reliably while genuine same-day repeat charges are still kept. The import
-      preview also dedups by **content key** (occurrence-aware), so old-style stored
-      hashes from before the change are still recognized as duplicates.
-- [ ] Commit/push to GitHub so work is backed up off the laptop
-- [ ] Eventually: free hosting (Vercel/Netlify + deployed API) to retire Lovable cost
-- [ ] **(nice-to-have) "Show the SQL" inspector** — an expandable modal on data-heavy
-      pages (pivot, transactions, drilldown) that shows the actual query used to fetch
-      the data, and for mutations (recategorize / tag / taxonomy edits) the
-      statement(s) that ran. For learning + troubleshooting. Likely: API returns the
-      rendered SQL (params interpolated, read-only/sanitized) alongside results behind
-      a `?debug=1` flag, and the FE shows it in a collapsible panel.
+## The core loop
+Each import → rules auto-categorize most transactions → the rest lands in the
+**Review Queue** → you categorize it and (optionally) create a rule → that rule
+catches the same merchant automatically next time. The queue shrinks with every
+import.
 
 ---
 
-## (Historical roadmap below — pre-React, kept for context)
+## ✅ Done
+- **Pivot** — category › subcategory › months, drilldown, inline recategorize;
+  views: spending / income / everything (transfers netted, refunds offset).
+- **Import** — Chase CSV, Amazon, Venmo, each with upload → preview → commit
+  (nothing written until approved). Per-source "last imported" dates.
+- **Amazon enrichment** — expand orders into line items; soft-supersede the card
+  charge (`exclude_from_budget`) instead of deleting.
+- **Venmo enrichment** — balance-aware, funding-source ingestion: classifies each
+  Venmo row by Funding Source / Destination, ingests balance income/expense as
+  real transactions, and supersedes the matching bank cashout. Deterministic
+  (replaced the old subset-sum). Includes a reset endpoint for clean re-runs.
+- **Dashboard** — period selector (last month / this month / YTD / all);
+  income / expenses / **savings** / net (scoped to real spending, transfers
+  excluded); spikes & dips vs trailing median; top categories; major purchases.
+- **Rules** management UI · **Taxonomy** management UI · **Review Queue** (+ LLM
+  re-run of the whole queue).
+- **Transactions** — filter/search/sort, bulk recategorize, inline edit, tags,
+  `exclude_from_budget` surfaced (excluded badge + "Hide excluded" toggle),
+  **CSV export** of the filtered view.
+- **SQL transparency** — "Show SQL" behind Pivot / Transactions / Rules / Stats.
 
-## Core Principles
-- **Granular visibility**: Move beyond generic categories (e.g., "Shopping/Amazon" → "Baby/Diapers", "Pet/Dog Food")
-- **ELT architecture**: Import raw data once, enrich multiple times as logic improves
-- **High auto-categorization**: Target 90%+ accuracy through rules + LLM fallback
-- **Joint household support**: Track Andrew and Amanda's separate Venmo/Amazon but shared bank accounts
+## 🔜 Now / Next
+- [ ] **Clear the Review Queue** (~82, inflated by the newly-ingested Venmo
+      income/expense rows) — categorize + create rules so future imports need less.
+- [ ] **Saved filter presets** on Transactions (save & re-apply common filters).
+- [ ] **Budgets / targets** — set a monthly target per category, track actual vs
+      target (over/under) on the Dashboard or a dedicated page.
 
----
+## 🌥️ Productionizing (to use day-to-day + share)
+- [ ] **Host in the cloud** — deploy the API + frontend + Postgres so it's usable
+      off this laptop (e.g. Fly.io / Render / Railway; managed Postgres).
+- [ ] **Password protection / auth** — so the household (e.g. spouse) can log in
+      and use it. Start with simple auth; multi-user later.
+- [ ] **Demo data + privacy** — separate the real spending DB from a shareable
+      **demo seed**: a script that populates synthetic/anonymized transactions so
+      the app can be demoed publicly without exposing real finances. (Pair with
+      scrubbing real data from git history — see below.)
 
-## ✅ Done (Weeks 1-6)
+## 🧹 Tech debt / cleanup
+- Real Amazon analysis CSV was untracked (2026-06-10) but **still exists in git
+  history** — scrub if the repo goes public (`git filter-repo`).
+- Venmo: surface the funding-source classification + a re-run control in the
+  Import UI (currently API-only).
+- See `TECH_DEBT.md` for the running list.
 
-### Foundation
-- [x] Database schema and migrations
-- [x] CSV parsers (Chase checking + credit)
-- [x] Merchant normalizer
-- [x] Categorization engine (rules + LLM)
-- [x] Streamlit dashboard with fuzzy search
-- [x] 227 active categorization rules
-- [x] 90%+ auto-categorization rate
-
-### ELT Migration
-- [x] Staging tables (amazon_orders_raw, venmo_transactions_raw)
-- [x] Import scripts with deduplication
-- [x] Enrichment pipelines (separate from import)
-
-### Enrichment Phase 1
-- [x] Amazon enrichment: Expand orders into line items
-- [x] Venmo enrichment: Expand cashouts + enrich outgoing payments
-- [x] Taxonomy redesign (Baby, Pet, Home, Health subcategories)
-- [x] VENMO FROM / VENMO TO naming
-
----
-
-## 🔥 This Week (Week of Feb 5)
-- [ ] Test Amazon enrichment on December 2025
-- [ ] Test Venmo enrichment on December 2025
-- [ ] Review enriched transactions in dashboard
-- [ ] Create rules for recurring purchases
-
----
-
-## 📅 Next 2-3 Weeks
-
-### Week of Feb 12: Pivot Table + Phase 2 Prep
-- [ ] **Pivot table view** 🔥 (1-2 days)
-  - Monthly spending by category
-  - Trend indicators
-  - Export to CSV
-  
-- [ ] **Fix LLM categorization** (1 day)
-  - Debug taxonomy loader
-  - Test with sample data
-  
-- [ ] **Import Amazon returns** (0.5 days)
-  - Add returns to staging table
-  - Plan Phase 2 logic
-
-### Week of Feb 19: Amazon Phase 2
-- [ ] **Amazon returns handling** (2-3 days)
-  - Match returns to line items
-  - Handle CC refunds
-  - Track gift card credits
-
-- [ ] **Full historical enrichment** (1 day)
-  - Process all 2,010 orders (2023-2026)
-  - Bulk categorization in dashboard
-
-### Week of Feb 26: Dashboard Polish
-- [ ] **Edit/delete transactions** (1-2 days)
-  - Inline editing
-  - Delete button
-  - Bulk operations
-
-- [ ] **Better filtering** (1 day)
-  - Date ranges
-  - Amount ranges
-  - Multi-select categories
-
----
-
-## 🎯 Month 2 (March)
-
-### Costco Enrichment
-- [ ] Research: Receipt format or API?
-- [ ] Build enrichment pipeline (similar to Amazon)
-- [ ] Test on historical data
-
-### Automation (Maybe)
-- [ ] Monthly import script
-- [ ] Email digest
-- [ ] Or: Just keep manual for now?
-
----
-
-## 🚀 Month 3+ (When Ready)
-
-### Cloud Deploy (If Needed)
-- [ ] Railway or Render deployment
-- [ ] Mobile-friendly dashboard
-- [ ] Share with Amanda
-
-### Nice to Haves
-- [ ] Budget alerts
-- [ ] Spending trends charts
-- [ ] Plaid integration (direct bank connection)
-- [ ] Receipt scanning (OCR)
-
----
-
-## 🤷 Maybe Never / Aspirational
-
-## 🤷 Maybe Never / Aspirational
-
-*Stuff that would be cool but probably overkill for a personal project*
-
-### Advanced Features
-- Receipt scanning (OCR) - probably easier to just keep CSVs
-- Investment tracking - Fidelity has this already
-- Tax optimization - TurboTax exists
-- Bill tracking - just use autopay like a normal person
-
-### Integrations
-- Plaid (direct bank connection) - $30/month vs free CSV downloads?
-- YNAB-style envelope budgeting - might be too rigid
-- Mobile app - Streamlit on phone browser is fine
-
-*Keep this list for inspiration but don't feel bad about ignoring it*
-
----
-
-## 📈 Success Metrics
-
-**Current State (Feb 2026):**
-- ✅ 5,863 historical transactions
-- ✅ 227 categorization rules
-- ✅ 90%+ auto-categorization rate
-- ✅ 2,010 Amazon orders ready to enrich
-
-**By End of Month (Feb):**
-- 🎯 Pivot table view working
-- 🎯 Amazon Phase 1 complete (Dec 2025 tested)
-- 🎯 Venmo enrichment complete
-- 🎯 <10 transactions/month need manual review
-
-**By Mid-March:**
-- 🎯 Amazon Phase 2 complete (returns handling)
-- 🎯 Full historical data enriched (2023-2026)
-- 🎯 95%+ auto-categorization
-
-**When It Feels Done:**
-- ✨ Can open dashboard and see spending breakdown in <30 seconds
-- ✨ Monthly import + review takes <15 minutes
-- ✨ Amanda can use it without asking Andrew how it works
-- ✨ Actually helps make better spending decisions (the whole point!)
-
----
-
-## 💭 Key Decisions
-
-**Why ELT over ETL?**  
-Amazon gives you complete history dumps every time, not just new stuff. Need to be able to re-process as we improve the logic.
-
-**Why staging tables?**  
-Can re-run imports safely without messing up enriched data. Also lets us test enrichment logic without re-importing everything.
-
-**Why Streamlit?**  
-Fast to build, Python-native, good enough for personal use. Can always rebuild in React later if needed.
-
-**Why PostgreSQL over SQLite?**  
-Better JSON support, will work in the cloud when we eventually deploy.
-
----
-
-*Last updated: 2026-02-05*
+## Known limitations
+- Venmo enrichment only reconciles cashouts **within the staged statement period**
+  and for **balance-affecting** payments; bank/card-funded Venmo payments (e.g.
+  rent) are already on the bank statement and are relabeled, not re-ingested.
+- Taxonomy is the DB source of truth; `data/taxonomy/taxonomy.json` is retired.
