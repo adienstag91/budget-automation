@@ -7,11 +7,15 @@ An intelligent budgeting system that learns from your historical spending patter
 
 ## 🎯 Features
 
-- **90%+ Auto-Categorization** - Learns from 196 rules generated from your spending history
-- **Smart Pattern Recognition** - Handles payment processors (Square, Zelle) with composite rules
+- **Web app** - React UI (Dashboard, Pivot, Transactions, Import, Review Queue,
+  Rules, Taxonomy) on a FastAPI + PostgreSQL backend
+- **90%+ Auto-Categorization** - Learns rules from your spending history
+- **Enrichment** - Amazon orders → line items; Venmo cashouts → itemized,
+  balance-aware income/expense (funding-source driven)
+- **Dashboard insights** - period-scoped income/expenses/savings/net, spikes &
+  dips vs trailing median, top categories, major purchases
 - **AI Suggestions** - Optional Claude API integration for unknown merchants
 - **Deduplication** - Safe to re-import CSVs, no duplicates
-- **Docker-Based** - Isolated PostgreSQL database, easy setup
 - **Learning Loop** - Categorize once, automated forever
 
 ## 🚀 Quick Start
@@ -61,30 +65,49 @@ Total transactions: 111
   • Needs review: 10 (9.0%)
 ```
 
+## 🖥️ Run the Web App
+
+The primary interface is a **React app** (Pivot, Dashboard, Import, Review Queue,
+Rules, Taxonomy) backed by a **FastAPI** server. After the steps above:
+
+```bash
+# 1. Start the database (if not already running)
+docker-compose up -d
+
+# 2. Start the API (FastAPI on :8000)
+uvicorn api:app --reload --port 8000
+
+# 3. Start the frontend (Vite dev server on :5173) — in a second terminal
+cd frontend
+npm install
+npm run dev
+```
+
+Then open **http://localhost:5173**. The Vite dev server proxies `/api` → the
+FastAPI server, so no backend URL is hardcoded.
+
+**Key screens:** Dashboard (period-scoped income/expenses/savings/net, spikes &
+dips, major purchases) · Pivot · Transactions (filter/search/sort, bulk edit, CSV
+export) · Import (Chase / Amazon / Venmo, preview → commit) · Review Queue ·
+Settings → Rules / Taxonomy.
+
 ## 📁 Project Structure
 
 ```
 budget-automation/
-├── src/budget_automation/          # Main package
-│   ├── cli/                        # Command-line scripts
-│   │   ├── init_db.py              # Database initialization
-│   │   └── import_csv.py           # CSV import
-│   ├── core/                       # Core logic
-│   │   ├── merchant_normalizer.py  # Clean merchant names
-│   │   ├── csv_parser.py           # Parse Chase CSVs
-│   │   ├── rule_matcher.py         # Apply categorization rules
-│   │   ├── llm_categorizer.py      # AI suggestions
-│   │   └── categorization_orchestrator.py  # Main engine
-│   ├── db/                         # Database
-│   │   └── db_schema.sql           # PostgreSQL schema
-│   └── utils/                      # Utilities
-│       └── db_connection.py        # Database connections
-├── data/                           # Configuration & rules
-│   ├── taxonomy/                   # Budget categories
-│   ├── rules/                      # Learned + manual rules
-│   ├── analysis/                   # Learning results
-│   ├── uploads/                    # CSV imports (gitignored)
-│   └── exports/                    # Exports (gitignored)
+├── api.py                          # FastAPI server (all /api endpoints)
+├── budget_automation/              # Python package
+│   ├── cli/                        # budget-init, budget-import
+│   ├── core/                       # normalizer, parsers, rule matcher, LLM,
+│   │                               #   amazon/venmo import + enrichment
+│   ├── db/db_schema.sql            # PostgreSQL schema
+│   ├── migrations/                 # incremental schema migrations
+│   └── utils/db_connection.py      # DB connection helper
+├── frontend/                       # React + Vite app (the web UI)
+│   └── src/                        # pages + components, api.js client
+├── data/
+│   ├── taxonomy/ rules/ analysis/  # config + learned rules
+│   └── uploads/ exports/           # CSV imports / exports (gitignored)
 ├── docs/                           # Documentation
 ├── tests/                          # Unit tests
 ├── docker-compose.yml              # Docker setup
