@@ -742,14 +742,20 @@ def update_transaction(
     subcategory: Optional[str] = None,
     notes: Optional[str] = None,
     txn_date: Optional[str] = None,
+    needs_review: Optional[bool] = None,
     tags: Optional[List[str]] = Body(default=None)
 ):
     """
-    Update a transaction's category, subcategory, notes, date, or tags.
+    Update a transaction's category, subcategory, notes, date, review flag, or tags.
 
     Recategorizing (changing category/subcategory/notes) marks the txn reviewed
     and stamps category_source='manual'. Editing only tags or the date does NOT
     touch categorization state.
+
+    The needs_review flag can also be toggled directly (the "review" checkbox):
+    an explicit value wins over the recategorization default, so you can clear a
+    correct-but-low-confidence guess without changing it, or re-flag a txn for a
+    later look. Toggling it alone leaves category_source / confidence untouched.
 
     A date edit is for correcting recurring bills that posted a day early/late
     around a month boundary (so they land in the right month). We intentionally
@@ -801,12 +807,19 @@ def update_transaction(
             updates.append("tags = %s")
             params.append(clean)
 
-        # Only a recategorization marks the txn reviewed / manual.
-        # A pure tag edit leaves categorization provenance untouched.
+        # A recategorization stamps manual provenance. A pure tag/date/review
+        # edit leaves provenance untouched.
         if recategorizing:
-            updates.append("needs_review = FALSE")
             updates.append("category_source = 'manual'")
             updates.append("category_confidence = 1.0")
+
+        # needs_review: an explicit value (the "review" checkbox) wins;
+        # otherwise a recategorization implicitly clears the flag.
+        if needs_review is not None:
+            updates.append("needs_review = %s")
+            params.append(needs_review)
+        elif recategorizing:
+            updates.append("needs_review = FALSE")
 
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update")
