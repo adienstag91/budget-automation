@@ -14,20 +14,25 @@ import { updateTransaction, createRule } from "../api.js";
 export default function RecategorizeControl({ txn, taxonomy, onSaved, allowRule }) {
   const [category, setCategory] = useState(txn.category || "");
   const [subcategory, setSubcategory] = useState(txn.subcategory || "");
+  const [needsReview, setNeedsReview] = useState(!!txn.needs_review);
   const [makeRule, setMakeRule] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const categories = Object.keys(taxonomy || {});
   const subs = taxonomy?.[category] || [];
 
+  // Save lights up when the category, subcategory, OR review flag differs from
+  // the stored transaction — so an already-correct guess can be cleared from
+  // the queue just by unchecking "review", without changing the category.
   const changed =
     category !== (txn.category || "") ||
-    subcategory !== (txn.subcategory || "");
+    subcategory !== (txn.subcategory || "") ||
+    needsReview !== !!txn.needs_review;
 
   async function save() {
     setSaving(true);
     try {
-      await updateTransaction(txn.txn_id, { category, subcategory });
+      await updateTransaction(txn.txn_id, { category, subcategory, needsReview });
       if (allowRule && makeRule && txn.merchant_norm) {
         await createRule({
           merchantNorm: txn.merchant_norm,
@@ -51,6 +56,7 @@ export default function RecategorizeControl({ txn, taxonomy, onSaved, allowRule 
         onChange={(e) => {
           setCategory(e.target.value);
           setSubcategory("");
+          setNeedsReview(false); // recategorizing implies it's been reviewed
         }}
       >
         <option value="">— category —</option>
@@ -62,7 +68,10 @@ export default function RecategorizeControl({ txn, taxonomy, onSaved, allowRule 
       </select>
       <select
         value={subcategory}
-        onChange={(e) => setSubcategory(e.target.value)}
+        onChange={(e) => {
+          setSubcategory(e.target.value);
+          setNeedsReview(false); // recategorizing implies it's been reviewed
+        }}
       >
         <option value="">— subcategory —</option>
         {subs.map((s) => (
@@ -77,6 +86,18 @@ export default function RecategorizeControl({ txn, taxonomy, onSaved, allowRule 
       >
         {saving ? "..." : "Save"}
       </button>
+      <label
+        className="review-check"
+        title="Checked = flagged for review (in the review queue). Uncheck and Save to mark it reviewed; check it to flag for a later look."
+      >
+        <input
+          type="checkbox"
+          checked={needsReview}
+          disabled={saving}
+          onChange={(e) => setNeedsReview(e.target.checked)}
+        />
+        review
+      </label>
       {allowRule && (
         <label className="rule-check" title="Also create a rule so this merchant auto-categorizes next time">
           <input

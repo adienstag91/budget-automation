@@ -140,7 +140,8 @@ body {
   border: 1px solid #f3c2c2;
 }
 
-.rule-check {
+.rule-check,
+.review-check {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -148,7 +149,8 @@ body {
   color: var(--muted);
   cursor: pointer;
 }
-.rule-check input {
+.rule-check input,
+.review-check input {
   cursor: pointer;
 }
 
