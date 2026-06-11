@@ -46,6 +46,9 @@ import.
 - [ ] **Saved filter presets** on Transactions (save & re-apply common filters).
 - [ ] **Budgets / targets** — set a monthly target per category, track actual vs
       target (over/under) on the Dashboard or a dedicated page.
+- [ ] **More enrichment sources** — line-item enrichment for Costco, Target, etc.
+      (same pattern as Amazon: expand a generic store charge into its items, or
+      ingest an itemized receipt/order export).
 
 ## 🌥️ Productionizing (to use day-to-day + share)
 - [ ] **Host in the cloud** — deploy the API + frontend + Postgres so it's usable
@@ -56,6 +59,11 @@ import.
       **demo seed**: a script that populates synthetic/anonymized transactions so
       the app can be demoed publicly without exposing real finances. (Pair with
       scrubbing real data from git history — see below.)
+- [ ] **Automated data sync** _(ambitious — the big quality-of-life win)_ —
+      auto-fetch + import data instead of manual export/upload: bank transactions
+      via an aggregator API (e.g. Plaid) for Chase, and scripted/scheduled
+      retrieval of Amazon order history and Venmo statements. Goal: imports happen
+      on a schedule, not by hand.
 
 ## 🧹 Tech debt / cleanup
 - Real Amazon analysis CSV was untracked (2026-06-10) but **still exists in git
