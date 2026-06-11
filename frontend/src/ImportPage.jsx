@@ -609,10 +609,10 @@ function VenmoImport({ lastDates, onImported }) {
 
       {commitResult && (
         <div className="import-result">
-          Expanded <b>{commitResult.expanded_cashouts}</b> cashouts into{" "}
-          {commitResult.new_rows} VENMO FROM rows ·{" "}
-          {commitResult.enriched_outgoing} outgoing relabeled ·{" "}
-          {commitResult.superseded_txns} cashouts superseded.{" "}
+          Ingested <b>{commitResult.income_created}</b> income +{" "}
+          {commitResult.expense_created} expense rows ·{" "}
+          {commitResult.cashouts_superseded} cashouts superseded ·{" "}
+          {commitResult.outgoing_relabeled} outgoing relabeled.{" "}
           <a href="/review">Go to Review Queue →</a>
         </div>
       )}
@@ -621,13 +621,16 @@ function VenmoImport({ lastDates, onImported }) {
         <>
           <div className="import-summary">
             <span className="stat">
-              expansions <b>{plan.totals.expansions}</b>
+              income <b>{plan.totals.income_rows}</b>
             </span>
             <span className="stat">
-              outgoing <b>{plan.totals.enrich}</b>
+              expense <b>{plan.totals.expense_rows}</b>
             </span>
             <span className="stat">
-              new rows <b>{plan.totals.new_rows}</b>
+              cashouts <b>{plan.totals.cashouts_superseded}</b>
+            </span>
+            <span className="stat">
+              relabel <b>{plan.totals.outgoing_relabeled}</b>
             </span>
             <div className="spacer" />
             <button
@@ -667,26 +670,24 @@ function VenmoImport({ lastDates, onImported }) {
                     </td>
                     <td>{(r.date || "").slice(0, 10)}</td>
                     <td>
-                      {r.kind === "expand" ? (
-                        <span className="new-badge">cashout → from</span>
+                      {r.kind === "income" ? (
+                        <span className="new-badge">income</span>
+                      ) : r.kind === "expense" ? (
+                        <span className="src-badge src-rule">expense</span>
+                      ) : r.kind === "supersede" ? (
+                        <span className="dup-badge">cashout</span>
                       ) : (
-                        <span className="src-badge src-rule">outgoing → to</span>
+                        <span className="src-badge src-rule">relabel</span>
                       )}
                     </td>
                     <td className="desc">
-                      {r.kind === "expand" ? (
+                      {r.kind === "income" ? (
                         <>
-                          Expand cashout (@{r.venmo_account}) into{" "}
-                          {r.income.length} VENMO FROM
-                          <div className="order-items">
-                            {r.income.map((inc, j) => (
-                              <div key={j}>
-                                {fmtCurrency(inc.amount)} from {inc.from_name}
-                                {inc.note ? ` — ${inc.note.slice(0, 40)}` : ""}
-                              </div>
-                            ))}
-                          </div>
+                          VENMO FROM {r.from_name} (@{r.venmo_account})
+                          {r.note ? ` — ${r.note.slice(0, 50)}` : ""}
                         </>
+                      ) : r.kind === "supersede" ? (
+                        <>Supersede cashout (@{r.venmo_account}) — itemized above</>
                       ) : (
                         <>
                           VENMO TO {r.to_name} (@{r.venmo_account})

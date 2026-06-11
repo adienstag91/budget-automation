@@ -2457,16 +2457,14 @@ async def venmo_import(file: UploadFile = File(...)):
 
 
 @app.get("/api/venmo/enrichment/preview")
-def venmo_enrichment_preview(lookback_days: int = Query(30, ge=1, le=120)):
-    """Read-only Venmo enrichment plan: cashout expansions + outgoing enrichments
-    that would be applied. Writes nothing. lookback_days controls how far before a
-    cashout to look for funding income (longer = more matches but more risk of a
-    coincidental subset-sum)."""
+def venmo_enrichment_preview():
+    """Read-only Venmo enrichment plan (funding-source ingestion): income/expense
+    rows to create, cashouts to supersede, and outgoing to relabel. Writes nothing."""
     from budget_automation.core.venmo_enrichment import build_venmo_enrichment_plan
 
     conn = get_db_connection()
     try:
-        return build_venmo_enrichment_plan(conn, lookback_days=lookback_days)
+        return build_venmo_enrichment_plan(conn)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -2475,18 +2473,17 @@ def venmo_enrichment_preview(lookback_days: int = Query(30, ge=1, le=120)):
 
 class VenmoEnrichBody(BaseModel):
     keys: List[str]
-    lookback_days: int = 30
 
 
 @app.post("/api/venmo/enrichment/commit")
 def venmo_enrichment_commit(body: VenmoEnrichBody):
-    """Apply the selected Venmo enrichments in a single transaction. Soft-supersedes
-    matched VENMO CASHOUT txns (exclude_from_budget=TRUE) instead of deleting them."""
+    """Apply the selected Venmo enrichments in a single transaction: ingest
+    balance-affecting payments and soft-supersede the matching cashouts."""
     from budget_automation.core.venmo_enrichment import commit_venmo_enrichment
 
     conn = get_db_connection()
     try:
-        return commit_venmo_enrichment(conn, body.keys, lookback_days=body.lookback_days)
+        return commit_venmo_enrichment(conn, body.keys)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
