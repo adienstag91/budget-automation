@@ -150,18 +150,20 @@ export function fetchStats({ startDate, endDate, includeSql = false } = {}) {
   return getJSON(`/api/stats${qs ? `?${qs}` : ""}`);
 }
 
-// Update a single transaction's category/subcategory/notes/date and/or tags.
-// category/subcategory/notes/txnDate go as query params; tags (an array) goes as
-// the JSON body. Sending tags or txnDate alone does NOT recategorize the txn.
+// Update a single transaction's category/subcategory/notes/date/review flag
+// and/or tags. category/subcategory/notes/txnDate/needsReview go as query
+// params; tags (an array) goes as the JSON body. Sending tags, txnDate, or
+// needsReview alone does NOT recategorize the txn.
 export async function updateTransaction(
   txnId,
-  { category, subcategory, notes, txnDate, tags } = {}
+  { category, subcategory, notes, txnDate, needsReview, tags } = {}
 ) {
   const params = new URLSearchParams();
   if (category != null) params.set("category", category);
   if (subcategory != null) params.set("subcategory", subcategory);
   if (notes != null) params.set("notes", notes);
   if (txnDate != null) params.set("txn_date", txnDate);
+  if (needsReview != null) params.set("needs_review", String(needsReview));
 
   const opts = { method: "PUT" };
   if (tags != null) {
