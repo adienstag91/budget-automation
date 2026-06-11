@@ -99,6 +99,10 @@ def parse_venmo_csv(csv_path):
                     'to_name': row.get('To', '').strip(),
                     'note': row.get('Note', '').strip(),
                     'account_owner': account_owner,
+                    # Funding Source / Destination disambiguate balance-affecting
+                    # payments from bank/card-funded ones (see migration 002).
+                    'funding_source': row.get('Funding Source', '').strip(),
+                    'destination': row.get('Destination', '').strip(),
                 }
                 
                 transactions.append(txn)
@@ -163,12 +167,12 @@ def stage_venmo_transactions(conn, csv_path):
         INSERT INTO venmo_transactions_raw (
             venmo_id, transaction_datetime, transaction_date,
             transaction_type, amount, direction, from_name, to_name,
-            note, account_owner, import_batch_id
+            note, account_owner, funding_source, destination, import_batch_id
         ) VALUES (
             %(venmo_id)s, %(transaction_datetime)s, %(transaction_date)s,
             %(transaction_type)s, %(amount)s, %(direction)s,
             %(from_name)s, %(to_name)s, %(note)s, %(account_owner)s,
-            %(batch_id)s
+            %(funding_source)s, %(destination)s, %(batch_id)s
         )
         ON CONFLICT (venmo_id) DO NOTHING
     """
