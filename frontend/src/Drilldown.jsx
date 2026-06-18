@@ -3,6 +3,7 @@ import { fetchTransactions, fmtCurrency, fmtMonthLabel } from "./api.js";
 import RecategorizeControl from "./components/RecategorizeControl.jsx";
 import TagEditor from "./components/TagEditor.jsx";
 import DateEditControl from "./components/DateEditControl.jsx";
+import ExcludeControl from "./components/ExcludeControl.jsx";
 
 export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
   const [txns, setTxns] = useState([]);
@@ -81,6 +82,13 @@ export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
                 }}
               />
               <TagEditor txn={t} onSaved={load} />
+              <ExcludeControl
+                txn={t}
+                onSaved={() => {
+                  load();
+                  onChanged && onChanged();
+                }}
+              />
             </div>
           ))}
       </div>

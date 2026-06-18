@@ -141,7 +141,8 @@ body {
 }
 
 .rule-check,
-.review-check {
+.review-check,
+.exclude-check {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -150,7 +151,8 @@ body {
   cursor: pointer;
 }
 .rule-check input,
-.review-check input {
+.review-check input,
+.exclude-check input {
   cursor: pointer;
 }
 

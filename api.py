@@ -743,10 +743,12 @@ def update_transaction(
     notes: Optional[str] = None,
     txn_date: Optional[str] = None,
     needs_review: Optional[bool] = None,
+    exclude_from_budget: Optional[bool] = None,
     tags: Optional[List[str]] = Body(default=None)
 ):
     """
-    Update a transaction's category, subcategory, notes, date, review flag, or tags.
+    Update a transaction's category, subcategory, notes, date, review flag,
+    budget-exclusion flag, or tags.
 
     Recategorizing (changing category/subcategory/notes) marks the txn reviewed
     and stamps category_source='manual'. Editing only tags or the date does NOT
@@ -756,6 +758,13 @@ def update_transaction(
     an explicit value wins over the recategorization default, so you can clear a
     correct-but-low-confidence guess without changing it, or re-flag a txn for a
     later look. Toggling it alone leaves category_source / confidence untouched.
+
+    The exclude_from_budget flag is the manual escape hatch for genuine
+    double-counts (a duplicate, a transfer the rules missed) that categorization
+    can't express — the same flag the Venmo/Amazon enrichments set when they
+    supersede a row. It's an independent toggle: setting it does not recategorize
+    or re-flag the txn. For whole classes of money-movement (CC payments,
+    transfers), prefer categorizing to a transfer category instead.
 
     A date edit is for correcting recurring bills that posted a day early/late
     around a month boundary (so they land in the right month). We intentionally
@@ -821,6 +830,12 @@ def update_transaction(
         elif recategorizing:
             updates.append("needs_review = FALSE")
 
+        # exclude_from_budget: independent manual toggle, never implied by a
+        # recategorization.
+        if exclude_from_budget is not None:
+            updates.append("exclude_from_budget = %s")
+            params.append(exclude_from_budget)
+
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update")
 
@@ -830,7 +845,8 @@ def update_transaction(
             UPDATE transactions
             SET {', '.join(updates)}
             WHERE txn_id = %s
-            RETURNING txn_id, category, subcategory, needs_review, tags, txn_date
+            RETURNING txn_id, category, subcategory, needs_review, tags, txn_date,
+                      exclude_from_budget
         """
 
         cursor.execute(query, params)
@@ -850,6 +866,7 @@ def update_transaction(
             "needs_review": result[3],
             "tags": result[4] or [],
             "txn_date": result[5].strftime('%Y-%m-%d') if result[5] else None,
+            "exclude_from_budget": result[6],
             "message": "Transaction updated successfully"
         }
     

@@ -150,13 +150,13 @@ export function fetchStats({ startDate, endDate, includeSql = false } = {}) {
   return getJSON(`/api/stats${qs ? `?${qs}` : ""}`);
 }
 
-// Update a single transaction's category/subcategory/notes/date/review flag
-// and/or tags. category/subcategory/notes/txnDate/needsReview go as query
-// params; tags (an array) goes as the JSON body. Sending tags, txnDate, or
-// needsReview alone does NOT recategorize the txn.
+// Update a single transaction's category/subcategory/notes/date/review flag/
+// budget-exclusion flag and/or tags. Scalars go as query params; tags (an
+// array) goes as the JSON body. Sending tags, txnDate, needsReview, or
+// excludeFromBudget alone does NOT recategorize the txn.
 export async function updateTransaction(
   txnId,
-  { category, subcategory, notes, txnDate, needsReview, tags } = {}
+  { category, subcategory, notes, txnDate, needsReview, excludeFromBudget, tags } = {}
 ) {
   const params = new URLSearchParams();
   if (category != null) params.set("category", category);
@@ -164,6 +164,8 @@ export async function updateTransaction(
   if (notes != null) params.set("notes", notes);
   if (txnDate != null) params.set("txn_date", txnDate);
   if (needsReview != null) params.set("needs_review", String(needsReview));
+  if (excludeFromBudget != null)
+    params.set("exclude_from_budget", String(excludeFromBudget));
 
   const opts = { method: "PUT" };
   if (tags != null) {
