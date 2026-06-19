@@ -1,6 +1,6 @@
 # Budget Automation — Roadmap
 
-_Last updated: 2026-06-10_
+_Last updated: 2026-06-19_
 
 ## Vision
 A personal budgeting system for joint household finances: import bank/Venmo/Amazon
@@ -24,8 +24,11 @@ import.
   views: spending / income / everything (transfers netted, refunds offset).
 - **Import** — Chase CSV, Amazon, Venmo, each with upload → preview → commit
   (nothing written until approved). Per-source "last imported" dates.
-- **Amazon enrichment** — expand orders into line items; soft-supersede the card
-  charge (`exclude_from_budget`) instead of deleting.
+- **Amazon enrichment (Phase 1)** — import all orders (matched *and* unmatched),
+  expand each into per-item line items, soft-supersede the matched card charge
+  (`exclude_from_budget`) instead of deleting, record the payment source in notes
+  (credit card vs. "unknown / possibly gift card"), and send everything to the
+  Review Queue for a manual pass. CLI + Import UI (upload → preview → commit).
 - **Venmo enrichment** — balance-aware, funding-source ingestion: classifies each
   Venmo row by Funding Source / Destination, ingests balance income/expense as
   real transactions, and supersedes the matching bank cashout. Deterministic
@@ -46,6 +49,27 @@ import.
 - [ ] **Saved filter presets** on Transactions (save & re-apply common filters).
 - [ ] **Budgets / targets** — set a monthly target per category, track actual vs
       target (over/under) on the Dashboard or a dedicated page.
+- [ ] **Amazon enrichment — returns & refunds (Phase 2)** — the real accuracy
+      fix. Today a return double-distorts the books: the line item still counts as
+      spend *and* the card refund lands as stray income/uncategorized credit.
+      - [ ] _Quick win first:_ read `payment_instrument_type` (already captured at
+            import, currently ignored) to label payment source from Amazon's own
+            data instead of inferring it purely from "did a card charge match."
+            Sharpens the gift-card/partial cases for free.
+      - [ ] Import the Amazon **Returns/Refunds** export into a staging table
+            (`amazon_returns_raw`), same upload → preview → commit flow.
+      - [ ] Auto-mark returned line items (`is_return`, and exclude/net them out)
+            so a returned purchase stops counting as spend.
+      - [ ] Match the **card refund credit** back to the original order/item and
+            net it against the original category, rather than leaving it as a
+            floating income/credit row.
+- [ ] **Amazon enrichment — gift cards & partial payments (Phase 3)** — later;
+      lower frequency, higher complexity.
+      - [ ] Gift-card balance tracking — treat gift-card-funded orders as drawing
+            down a tracked balance, not as card spend.
+      - [ ] Partial-payment splitting — one order paid part gift card / part card
+            won't match the card charge on total; split line items across funding
+            sources (these fall through as "unmatched/unknown" today).
 - [ ] **More enrichment sources** — line-item enrichment for Costco, Target, etc.
       (same pattern as Amazon: expand a generic store charge into its items, or
       ingest an itemized receipt/order export).
