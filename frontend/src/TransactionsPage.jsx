@@ -9,6 +9,7 @@ import {
 import RecategorizeControl from "./components/RecategorizeControl.jsx";
 import TagEditor from "./components/TagEditor.jsx";
 import DateEditControl from "./components/DateEditControl.jsx";
+import ExcludeControl from "./components/ExcludeControl.jsx";
 import SqlPeek from "./components/SqlPeek.jsx";
 
 const PAGE_SIZE = 100;
@@ -543,6 +544,7 @@ export default function TransactionsPage({ onReviewMaybeChanged }) {
                                   onSaved={afterRowEdit}
                                 />
                                 <TagEditor txn={t} onSaved={load} />
+                                <ExcludeControl txn={t} onSaved={afterRowEdit} />
                               </div>
                             </div>
                           </td>
