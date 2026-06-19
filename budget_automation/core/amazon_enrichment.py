@@ -24,7 +24,7 @@ def get_unenriched_orders(conn, start_date='2023-01-01'):
     
     # Get all unenriched order items
     cursor.execute("""
-        SELECT 
+        SELECT
             order_id,
             order_date,
             product_name,
@@ -34,29 +34,33 @@ def get_unenriched_orders(conn, start_date='2023-01-01'):
             unit_price_tax,
             shipping_charge,
             total_owed,
-            total_discounts
+            total_discounts,
+            payment_instrument_type
         FROM amazon_orders_raw
         WHERE enriched = FALSE
           AND order_date >= %s
         ORDER BY order_date, order_id
     """, (start_date,))
-    
+
     rows = cursor.fetchall()
     cursor.close()
-    
+
     # Group items by order_id
     orders = {}
     for row in rows:
         order_id = row[0]
-        
+
         if order_id not in orders:
             orders[order_id] = {
                 'order_id': order_id,
                 'order_date': row[1],
                 'items': [],
-                'total': Decimal('0.00')
+                'total': Decimal('0.00'),
+                # Amazon's own payment label for the order (first non-empty
+                # across its rows); used to label payment source accurately.
+                'payment_instrument': None,
             }
-        
+
         item = {
             'product_name': row[2],
             'asin': row[3],
@@ -67,11 +71,66 @@ def get_unenriched_orders(conn, start_date='2023-01-01'):
             'total_owed': Decimal(str(row[8])) if row[8] else Decimal('0.00'),
             'total_discounts': Decimal(str(row[9])) if row[9] else Decimal('0.00')
         }
-        
+
         orders[order_id]['items'].append(item)
         orders[order_id]['total'] += item['total_owed']
-    
+        if not orders[order_id]['payment_instrument'] and (row[10] or '').strip():
+            orders[order_id]['payment_instrument'] = row[10].strip()
+
     return list(orders.values())
+
+
+def classify_payment_instrument(raw):
+    """
+    Map Amazon's raw "Payment Instrument Type" (e.g. "Visa - 1234",
+    "Amazon Gift Card", "MasterCard") to (kind, label).
+
+    kind:  'gift_card' | 'card' | 'unknown'
+    label: a cleaned human label, or None when Amazon told us nothing.
+    """
+    s = (raw or '').strip()
+    if not s:
+        return ('unknown', None)
+    if 'gift' in s.lower():
+        return ('gift_card', s)
+    return ('card', s)
+
+
+def derive_payment_source(order, matched_txn):
+    """
+    Decide the payment label for an order, preferring Amazon's own payment
+    instrument over inferring it purely from whether a card charge matched.
+
+    Returns (payment_source, payment_instrument):
+      payment_source:     'credit_card' | 'gift_card' | 'unknown'
+      payment_instrument: human label from Amazon, or None.
+
+    This is only the *label*. Whether a card charge gets soft-superseded is
+    still governed separately by matched_txn.
+    """
+    kind, label = classify_payment_instrument(order.get('payment_instrument'))
+    if kind == 'gift_card':
+        return ('gift_card', label)
+    if kind == 'card':
+        return ('credit_card', label)
+    # Amazon told us nothing usable — fall back to match-based inference.
+    if matched_txn:
+        return ('credit_card', None)
+    return ('unknown', None)
+
+
+def build_payment_note(order, item, payment_source, payment_instrument, matched_txn):
+    """Per-item notes string: order/ASIN/qty plus the resolved payment source."""
+    base = f"Order: {order['order_id']} | ASIN: {item['asin']} | Qty: {item['quantity']}"
+    if payment_source == 'gift_card':
+        pay = f"Paid via {payment_instrument or 'gift card'}"
+    elif payment_source == 'credit_card':
+        pay = f"Paid via {payment_instrument or 'credit card'}"
+        if not matched_txn:
+            pay += " (no matching card charge found)"
+    else:
+        pay = "Payment method unknown"
+    return f"{base} | {pay}"
 
 
 def find_matching_transaction(conn, order_date, order_total, window_days=3):
@@ -143,29 +202,30 @@ def categorize_product_with_llm(product_name, llm_categorizer):
         return ('Shopping', 'Amazon')
 
 
-def expand_amazon_order(conn, order, matched_txn, payment_source, llm_categorizer=None, dry_run=False):
+def expand_amazon_order(conn, order, matched_txn, payment_source, llm_categorizer=None,
+                        dry_run=False, payment_instrument=None):
     """
     Expand an Amazon order into detailed line items
-    
+
     Handles both:
     - Matched orders (has CC transaction) - deletes CC txn, creates line items
     - Unmatched orders (no CC transaction) - creates line items anyway
-    
+
     Args:
-        payment_source: 'credit_card' or 'unknown' (likely gift card)
+        payment_source: 'credit_card' | 'gift_card' | 'unknown'
+        payment_instrument: Amazon's payment label (e.g. "Visa - 1234"), or None
     """
     cursor = conn.cursor()
-    
+
     if dry_run:
         print(f"\n📦 {order['order_id']} | {order['order_date'].date()} | ${order['total']:.2f}")
-        
+
         if matched_txn:
             print(f"   Matched to: txn_id={matched_txn['txn_id']} | {matched_txn['txn_date']} | ${matched_txn['amount']:.2f}")
-            print(f"   Payment: Credit Card")
         else:
             print(f"   No CC match found")
-            print(f"   Payment: Unknown (possibly gift card)")
-        
+        print(f"   Payment: {payment_instrument or payment_source}")
+
         print(f"   Would expand into {len(order['items'])} items:")
         
         for item in order['items']:
@@ -216,11 +276,10 @@ def expand_amazon_order(conn, order, matched_txn, payment_source, llm_categorize
         source_row_hash = f"amz_{hashlib.md5(hash_str.encode()).hexdigest()[:8]}"
         
         # Build payment note
-        if payment_source == 'credit_card':
-            payment_note = f"Order: {order['order_id']} | ASIN: {item['asin']} | Qty: {item['quantity']} | Paid via credit card"
-        else:
-            payment_note = f"Order: {order['order_id']} | ASIN: {item['asin']} | Qty: {item['quantity']} | Payment method unknown (possibly gift card)"
-        
+        payment_note = build_payment_note(
+            order, item, payment_source, payment_instrument, matched_txn
+        )
+
         # Insert new transaction
         cursor.execute("""
             INSERT INTO transactions (
@@ -296,7 +355,9 @@ def build_enrichment_plan(conn, start_date='2023-01-01', use_llm=False):
           "orders": [
             {
               "order_id", "order_date" (iso), "total" (float),
-              "payment_source": "credit_card" | "unknown",
+              "payment_source": "credit_card" | "gift_card" | "unknown",
+              "payment_instrument": Amazon's payment label (e.g. "Visa - 1234")
+                                    | None,
               "matched_txn": {txn_id, txn_date (iso), amount} | None,
               "items": [{product_name, asin, quantity, amount,
                          category, subcategory}, ...]
@@ -323,7 +384,7 @@ def build_enrichment_plan(conn, start_date='2023-01-01', use_llm=False):
 
     for order in orders:
         match = find_matching_transaction(conn, order['order_date'], order['total'])
-        payment_source = 'credit_card' if match else 'unknown'
+        payment_source, payment_instrument = derive_payment_source(order, match)
         if match:
             matched_count += 1
 
@@ -348,6 +409,7 @@ def build_enrichment_plan(conn, start_date='2023-01-01', use_llm=False):
             'order_date': order['order_date'].isoformat() if hasattr(order['order_date'], 'isoformat') else str(order['order_date']),
             'total': float(order['total']),
             'payment_source': payment_source,
+            'payment_instrument': payment_instrument,
             'matched_txn': (
                 {
                     'txn_id': match['txn_id'],
@@ -372,7 +434,8 @@ def build_enrichment_plan(conn, start_date='2023-01-01', use_llm=False):
     }
 
 
-def _expand_order_soft(conn, order, matched_txn, payment_source, llm_categorizer):
+def _expand_order_soft(conn, order, matched_txn, payment_source, llm_categorizer,
+                       payment_instrument=None):
     """
     Expand one order into line items, soft-superseding the matched card txn
     (exclude_from_budget = TRUE) instead of deleting it. Does NOT commit — the
@@ -421,10 +484,9 @@ def _expand_order_soft(conn, order, matched_txn, payment_source, llm_categorizer
         hash_str = f"amazon_{order['order_id']}_{item['asin']}"
         source_row_hash = f"amz_{hashlib.md5(hash_str.encode()).hexdigest()[:8]}"
 
-        if payment_source == 'credit_card':
-            payment_note = f"Order: {order['order_id']} | ASIN: {item['asin']} | Qty: {item['quantity']} | Paid via credit card"
-        else:
-            payment_note = f"Order: {order['order_id']} | ASIN: {item['asin']} | Qty: {item['quantity']} | Payment method unknown (possibly gift card)"
+        payment_note = build_payment_note(
+            order, item, payment_source, payment_instrument, matched_txn
+        )
 
         cursor.execute(
             """
@@ -495,8 +557,9 @@ def commit_enrichment(conn, order_ids, use_llm=False, start_date='2023-01-01'):
                 skipped += 1
                 continue
             match = find_matching_transaction(conn, order['order_date'], order['total'])
-            payment_source = 'credit_card' if match else 'unknown'
-            _expand_order_soft(conn, order, match, payment_source, llm_categorizer)
+            payment_source, payment_instrument = derive_payment_source(order, match)
+            _expand_order_soft(conn, order, match, payment_source, llm_categorizer,
+                               payment_instrument)
             enriched_orders += 1
             line_items += len(order['items'])
             if match:
@@ -601,18 +664,24 @@ def enrich_amazon_orders(start_date='2023-01-01', use_llm=False, dry_run=False):
     
     # Add matched orders with transaction info
     for item in matched:
+        payment_source, payment_instrument = derive_payment_source(
+            item['order'], item['transaction']
+        )
         all_orders_to_enrich.append({
             'order': item['order'],
             'transaction': item['transaction'],
-            'payment_source': 'credit_card'
+            'payment_source': payment_source,
+            'payment_instrument': payment_instrument,
         })
-    
+
     # Add unmatched orders without transaction info
     for order in unmatched:
+        payment_source, payment_instrument = derive_payment_source(order, None)
         all_orders_to_enrich.append({
             'order': order,
             'transaction': None,
-            'payment_source': 'unknown'  # Likely gift card
+            'payment_source': payment_source,
+            'payment_instrument': payment_instrument,
         })
     
     print(f"\n📊 Enrichment Plan:")
@@ -634,12 +703,13 @@ def enrich_amazon_orders(start_date='2023-01-01', use_llm=False, dry_run=False):
         # Show first 5 orders
         for item in all_orders_to_enrich[:5]:
             expand_amazon_order(
-                conn, 
-                item['order'], 
-                item['transaction'], 
+                conn,
+                item['order'],
+                item['transaction'],
                 item['payment_source'],
-                llm_categorizer, 
-                dry_run=True
+                llm_categorizer,
+                dry_run=True,
+                payment_instrument=item['payment_instrument'],
             )
         
         if len(all_orders_to_enrich) > 5:
@@ -664,12 +734,13 @@ def enrich_amazon_orders(start_date='2023-01-01', use_llm=False, dry_run=False):
             payment_type = "CC match" if item['payment_source'] == 'credit_card' else "No CC match"
             print(f"   [{i}/{len(all_orders_to_enrich)}] {order['order_id']} ({len(order['items'])} items) - {payment_type}")
             expand_amazon_order(
-                conn, 
-                order, 
-                item['transaction'], 
+                conn,
+                order,
+                item['transaction'],
                 item['payment_source'],
-                llm_categorizer, 
-                dry_run=False
+                llm_categorizer,
+                dry_run=False,
+                payment_instrument=item['payment_instrument'],
             )
         
         print(f"\n✅ Expanded {len(all_orders_to_enrich)} orders into {total_items_to_create} transactions")

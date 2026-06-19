@@ -347,11 +347,12 @@ function AmazonImport({ lastDates }) {
     amazonEnrichPreview({ useLlm })
       .then((data) => {
         setPlan(data);
-        // Default: select all matched orders (the safe, expected action).
+        // Default: select all orders with a matched card charge (the safe,
+        // expected action — those are the ones that supersede an existing row).
         setSelected(
           new Set(
             data.orders
-              .filter((o) => o.payment_source === "credit_card")
+              .filter((o) => o.matched_txn)
               .map((o) => o.order_id)
           )
         );
@@ -496,6 +497,15 @@ function AmazonImport({ lastDates }) {
                     ) : (
                       <span className="dup-badge">no match</span>
                     )}
+                    <div className="order-payment">
+                      {o.payment_source === "gift_card"
+                        ? `gift card${o.payment_instrument ? ` · ${o.payment_instrument}` : ""}`
+                        : o.payment_instrument
+                        ? o.payment_instrument
+                        : o.payment_source === "credit_card"
+                        ? "credit card"
+                        : "payment unknown"}
+                    </div>
                   </td>
                 </tr>
               ))}
