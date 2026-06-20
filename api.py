@@ -40,7 +40,14 @@ app.add_middleware(
 
 
 def get_db_connection():
-    """Get database connection"""
+    """Get database connection.
+
+    Prefer a single DATABASE_URL (what managed hosts provide); fall back to
+    discrete DB_* vars for local dev.
+    """
+    dsn = os.getenv("DATABASE_URL")
+    if dsn:
+        return psycopg2.connect(dsn)
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
         port=os.getenv("DB_PORT", 5433),

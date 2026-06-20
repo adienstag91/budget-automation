@@ -82,14 +82,22 @@ import.
       ingest an itemized receipt/order export).
 
 ## 🌥️ Productionizing (to use day-to-day + share)
-- [ ] **Host in the cloud** — deploy the API + frontend + Postgres so it's usable
-      off this laptop (e.g. Fly.io / Render / Railway; managed Postgres).
-- [ ] **Password protection / auth** — so the household (e.g. spouse) can log in
-      and use it. Start with simple auth; multi-user later.
-- [ ] **Demo data + privacy** — separate the real spending DB from a shareable
-      **demo seed**: a script that populates synthetic/anonymized transactions so
-      the app can be demoed publicly without exposing real finances. (Pair with
-      scrubbing real data from git history — see below.)
+**Decided architecture** (see `DEPLOY.md`): code is public, real data is private.
+"Demo vs real" is *which `DATABASE_URL` the app points at* + whether auth is on —
+not a toggle inside one DB. Host: **Fly.io** (app + managed Postgres). Auth:
+**Cloudflare Access** (email allow-list for you + spouse, no auth code in-app).
+Repo goes **public** with a public demo.
+- [ ] **Phase 0 — scrub git history** ⚠️ *do before going public.* Remove
+      `amazon_products_analysis.csv` from all history (`git filter-repo`),
+      force-push, re-clone. Steps in `DEPLOY.md`.
+- [x] **Phase 1 — foundation** — `DATABASE_URL` support in the DB layer
+      (`db_connection.py` + `api.py`); `DEPLOY.md` runbook.
+- [ ] **Phase 2 — make it deployable** — single-container `Dockerfile` (FastAPI
+      serves the `vite build` bundle + `/api`), `scripts/seed_demo.py` synthetic
+      seed, `APP_MODE=demo` banner, `fly.toml`.
+- [ ] **Phase 3 — go live** — deploy public demo first (demo DB, no real data),
+      then private prod: separate managed Postgres, migrate real data via
+      `pg_dump`/`pg_restore` (never git), Cloudflare Access in front.
 - [ ] **Automated data sync** _(ambitious — the big quality-of-life win)_ —
       auto-fetch + import data instead of manual export/upload: bank transactions
       via an aggregator API (e.g. Plaid) for Chase, and scripted/scheduled
@@ -98,7 +106,8 @@ import.
 
 ## 🧹 Tech debt / cleanup
 - Real Amazon analysis CSV was untracked (2026-06-10) but **still exists in git
-  history** — scrub if the repo goes public (`git filter-repo`).
+  history** — must scrub before the repo goes public (Productionizing → Phase 0;
+  `git filter-repo`, steps in `DEPLOY.md`).
 - Venmo: surface the funding-source classification + a re-run control in the
   Import UI (currently API-only).
 - See `TECH_DEBT.md` for the running list.
