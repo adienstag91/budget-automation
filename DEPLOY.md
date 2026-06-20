@@ -56,6 +56,18 @@ Caveats (important):
 
 ---
 
+## Local development (one command)
+
+```bash
+make dev        # Postgres + schema/taxonomy/rules + synthetic demo data
+make api        # backend  → http://localhost:8000
+make web        # frontend → http://localhost:5173
+make reset      # wipe the local DB volume and rebuild from scratch
+```
+`make dev` is idempotent and seeds **synthetic** data (`APP_MODE=demo`), so local
+work and Claude Code sessions never touch real finances. `make help` lists all
+targets.
+
 ## Phase 1 — Foundation (done in code)
 
 - `DATABASE_URL` support in `budget_automation/utils/db_connection.py` and the
@@ -137,8 +149,11 @@ rm real.dump                                    # do not keep dumps around
   `pg_dump` to a private encrypted location and **test a restore** at least once.
 - **Imports** (Chase/Amazon/Venmo CSVs) happen through the hosted UI over HTTPS,
   behind Access — your statements never touch git.
-- **Redeploy:** push to `main` → `flyctl deploy` (or wire a GitHub Action that
-  deploys on merge, using a Fly API token stored as a repo secret).
+- **Redeploy:** the **demo** auto-deploys on push to `main` via
+  `.github/workflows/deploy.yml` (needs a `FLY_API_TOKEN` repo secret —
+  `flyctl tokens create deploy -a budget-automation-demo`). **Production** is
+  deliberately manual (`flyctl deploy -a budget-prod`) so a push can't disturb
+  the private app.
 
 ---
 

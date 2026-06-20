@@ -97,6 +97,9 @@ Repo goes **public** with a public demo.
       seed, `/api/config` + `APP_MODE=demo` banner, `fly.toml`, `.dockerignore`,
       `.env.example`. *Not yet built/run in a real container — verify the image
       builds before deploying.*
+- [x] **Dev/CI convenience** — `make dev` (one-command local: Postgres + init +
+      synthetic seed), `Makefile` targets, and `.github/workflows/deploy.yml`
+      (auto-deploy the demo on push to `main`; prod stays manual).
 - [ ] **Phase 3 — go live** — deploy public demo first (demo DB, no real data),
       then private prod: separate managed Postgres, migrate real data via
       `pg_dump`/`pg_restore` (never git), Cloudflare Access in front.

@@ -1,0 +1,36 @@
+# Auto-deploy the PUBLIC DEMO app to Fly.io on every push to main.
+#
+# This builds the image from Dockerfile and deploys the app named in fly.toml
+# (budget-automation-demo, APP_MODE=demo, synthetic data only).
+#
+# PRODUCTION (real data) is deliberately NOT deployed here — keep that a manual
+# `flyctl deploy -c fly.prod.toml` (or a separate, gated workflow) so a push can
+# never disrupt the private app. See DEPLOY.md.
+#
+# Setup (one-time): create a Fly deploy token and add it as a repo secret named
+# FLY_API_TOKEN:
+#     flyctl tokens create deploy -a budget-automation-demo
+#     # GitHub → repo Settings → Secrets and variables → Actions → New secret
+
+name: Deploy demo to Fly.io
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: fly-deploy-demo
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
