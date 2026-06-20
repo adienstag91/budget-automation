@@ -139,3 +139,43 @@ rm real.dump                                    # do not keep dumps around
   behind Access — your statements never touch git.
 - **Redeploy:** push to `main` → `flyctl deploy` (or wire a GitHub Action that
   deploys on merge, using a Fly API token stored as a repo secret).
+
+---
+
+## Troubleshooting production safely (read-only access)
+
+The real DB is private: it's not publicly exposed, and Cloudflare Access only
+guards the HTTP app, not the Postgres port. You reach it over a WireGuard tunnel
+from an authenticated machine. **Who can read it = whoever you hand the
+connection string to.** Claude Code on the web clones *code only* and has no
+tunnel, so it can't reach prod by default. Local Claude Code runs as you — if
+your `.env`/tunnel exposes the DB it can query it, asking before each command.
+
+To make any troubleshooting (yours or Claude's) incapable of mutating data, use
+a **read-only role** instead of the owner credentials.
+
+### One-time: create a read-only role
+```bash
+# Open a tunnel to the managed Postgres, then connect as the owner.
+flyctl proxy 5544:5432 -a budget-prod &
+psql "$PROD_DATABASE_URL"      # owner connection (from `flyctl postgres attach`)
+```
+```sql
+-- Least-privilege read-only login.
+CREATE ROLE budget_ro LOGIN PASSWORD 'choose-a-strong-password';
+GRANT CONNECT ON DATABASE budget_db TO budget_ro;
+GRANT USAGE ON SCHEMA public TO budget_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO budget_ro;
+-- Cover future tables too:
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO budget_ro;
+```
+
+### Each time you (or Claude Code locally) troubleshoot
+```bash
+flyctl proxy 5544:5432 -a budget-prod &          # tunnel
+export TROUBLESHOOT_URL="postgresql://budget_ro:...@localhost:5544/budget_db"
+psql "$TROUBLESHOOT_URL" -c "SELECT category, count(*) FROM transactions GROUP BY 1;"
+```
+`budget_ro` can only `SELECT` — no `UPDATE`/`DELETE`/`DROP` — so worst case is a
+read. Keep the owner `DATABASE_URL` out of any environment you don't fully trust;
+hand out `TROUBLESHOOT_URL` (read-only) for debugging instead.
