@@ -52,13 +52,19 @@ import.
 - [ ] **Amazon enrichment — returns & refunds (Phase 2)** — the real accuracy
       fix. Today a return double-distorts the books: the line item still counts as
       spend *and* the card refund lands as stray income/uncategorized credit.
+      - ⏸ **Paused — waiting on a fresh Amazon export.** Source: Amazon **Privacy
+        Central → "Request My Data" → Your Orders** (the legacy instant "Order
+        History Reports" CSV is retired). The zip includes separate **Orders**,
+        **Returns**, and **Refunds** spreadsheets — request once, covers both
+        purchases and returns. Requested ~2026-06-20; ETA hours–days. Resume here
+        when it arrives.
       - [x] _Quick win:_ read `payment_instrument_type` (was captured at import
             but ignored) to label payment source from Amazon's own data —
             distinguishes gift card vs. card, records the instrument (e.g.
             "Visa - 1234") in notes, and flags card orders with no matching
             charge. Falls back to match-based inference when Amazon is silent.
-      - [ ] Import the Amazon **Returns/Refunds** export into a staging table
-            (`amazon_returns_raw`), same upload → preview → commit flow.
+      - [ ] Import the Amazon **Returns** + **Refunds** exports into a staging
+            table (`amazon_returns_raw`), same upload → preview → commit flow.
       - [ ] Auto-mark returned line items (`is_return`, and exclude/net them out)
             so a returned purchase stops counting as spend.
       - [ ] Match the **card refund credit** back to the original order/item and
