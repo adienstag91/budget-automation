@@ -11,6 +11,11 @@ async function getJSON(url) {
   return res.json();
 }
 
+// App bootstrap config from the backend. { mode: "demo"|"real", demo: bool }.
+export function fetchConfig() {
+  return getJSON(`/api/config`);
+}
+
 // Pivot table data: categories -> subcategories -> { month: amount }
 // view: "expense" (default, drops transfers) | "income" | "all" (raw, no flag filter)
 export function fetchPivot({

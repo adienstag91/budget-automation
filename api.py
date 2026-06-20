@@ -9,8 +9,9 @@ Run with: uvicorn api:app --reload --port 8000
 
 from fastapi import FastAPI, HTTPException, Query, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from datetime import datetime, date
+from pathlib import Path
 from typing import Optional, List
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -28,6 +29,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(title="Budget Pivot API", version="1.0.0")
+
+# Built React bundle (vite build → frontend/dist). Present in the deployed
+# container; absent in local dev (where Vite serves the frontend on :5173 and
+# proxies /api here). When present, this process serves the SPA too, so the
+# whole app is one container behind one origin.
+FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 
 # Enable CORS for your frontend (Lovable will need this)
 app.add_middleware(
@@ -140,7 +147,10 @@ class SubcategoryRef(BaseModel):
 
 @app.get("/")
 def root():
-    """Health check endpoint"""
+    """Serve the SPA in the deployed container; health JSON in local dev."""
+    index = FRONTEND_DIST / "index.html"
+    if index.exists():
+        return FileResponse(index)
     return {
         "status": "ok",
         "message": "Budget Pivot API is running",
@@ -150,6 +160,19 @@ def root():
             "categories": "/api/categories"
         }
     }
+
+
+@app.get("/api/health")
+def health():
+    """Programmatic health check (always JSON, used by Fly checks)."""
+    return {"status": "ok"}
+
+
+@app.get("/api/config")
+def get_config():
+    """Frontend bootstrap config. `mode` drives the demo banner."""
+    mode = os.getenv("APP_MODE", "real")
+    return {"mode": mode, "demo": mode == "demo"}
 
 
 @app.get("/api/pivot", response_model=PivotResponse)
@@ -2614,6 +2637,25 @@ def import_last_dates():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Serve the built frontend (single-container deploy) -----------------------
+# Registered LAST so every /api/* route above wins first. Any other path serves
+# a real static file if one exists (JS/CSS/favicon), else falls back to
+# index.html for client-side routing (react-router BrowserRouter deep links).
+if (FRONTEND_DIST / "index.html").exists():
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        candidate = (FRONTEND_DIST / full_path).resolve()
+        # Guard against path traversal; only serve files under the dist dir.
+        if (
+            full_path
+            and FRONTEND_DIST.resolve() in candidate.parents
+            and candidate.is_file()
+        ):
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")
 
 
 if __name__ == "__main__":

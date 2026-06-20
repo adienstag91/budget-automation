@@ -63,16 +63,20 @@ Caveats (important):
   the `DB_*` vars and Docker Postgres.
 - This runbook + roadmap entries.
 
-## Phase 2 — Make it deployable (next in code)
+## Phase 2 — Make it deployable (done in code)
 
-Artifacts to be added (tracked in the roadmap):
 - **`Dockerfile`** — multi-stage: `vite build` the React app, then run FastAPI
   (uvicorn) serving both the built static bundle and `/api` from one container.
-- **`scripts/seed_demo.py`** — generate synthetic accounts/transactions/rules so
-  the demo and local dev have realistic-but-fake data.
-- **Env-driven demo banner** — `APP_MODE=demo` shows a "Demo data" banner so the
-  public instance is unmistakable.
-- **`fly.toml`** — Fly.io app config.
+  api.py serves `frontend/dist` (with SPA fallback) when it's present.
+- **`scripts/seed_demo.py`** — `APP_MODE=demo python -m scripts.seed_demo`
+  generates deterministic synthetic transactions across ~14 months. Refuses to
+  run unless `APP_MODE=demo` (or `--force`) so it can't wipe a real DB.
+- **Demo banner** — `/api/config` reports the mode; the React shell shows a
+  "Demo — synthetic data" banner when `APP_MODE=demo`.
+- **`fly.toml`** — the public demo app (`budget-automation-demo`), with a
+  `/api/health` check.
+- **`.dockerignore` / `.env.example`** — keep the image free of data/secrets and
+  document the env vars.
 
 ## Phase 3 — Go live
 

@@ -92,9 +92,11 @@ Repo goes **public** with a public demo.
       force-push, re-clone. Steps in `DEPLOY.md`.
 - [x] **Phase 1 — foundation** — `DATABASE_URL` support in the DB layer
       (`db_connection.py` + `api.py`); `DEPLOY.md` runbook.
-- [ ] **Phase 2 — make it deployable** — single-container `Dockerfile` (FastAPI
+- [x] **Phase 2 — make it deployable** — single-container `Dockerfile` (FastAPI
       serves the `vite build` bundle + `/api`), `scripts/seed_demo.py` synthetic
-      seed, `APP_MODE=demo` banner, `fly.toml`.
+      seed, `/api/config` + `APP_MODE=demo` banner, `fly.toml`, `.dockerignore`,
+      `.env.example`. *Not yet built/run in a real container — verify the image
+      builds before deploying.*
 - [ ] **Phase 3 — go live** — deploy public demo first (demo DB, no real data),
       then private prod: separate managed Postgres, migrate real data via
       `pg_dump`/`pg_restore` (never git), Cloudflare Access in front.
