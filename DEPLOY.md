@@ -98,7 +98,34 @@ targets.
 - **Auth:** Cloudflare Access (Zero Trust) in front — email allow-list (you +
   spouse) + MFA, **no auth code in the app**.
 
-### 3a. Deploy the public demo first (no real data — safe to get wrong)
+> **Note on hosts:** the Fly steps below are one option. Fly has **no hard
+> spending cap** (only alerts), so if a guaranteed ceiling matters, use
+> **Railway** (set a hard usage limit that stops services) — see
+> "Deploy on Railway" just below — or put any host behind a virtual card with a
+> monthly limit. The app is host-agnostic: it only needs `DATABASE_URL`,
+> `APP_MODE`, and a `$PORT` to bind (the Dockerfile already honors `$PORT`).
+
+### Deploy on Railway (has a hard spending cap)
+1. **Set the cap first.** Railway dashboard → workspace **Settings → Usage** →
+   set a hard usage limit. Services are stopped when the limit is hit — this is
+   the ceiling Fly lacks. Do this before deploying.
+2. `railway login` → `railway init` (create a project).
+3. Add Postgres: dashboard **New → Database → PostgreSQL** (or `railway add`).
+4. App service variables: `APP_MODE=demo` and a reference
+   `DATABASE_URL = ${{Postgres.DATABASE_URL}}`.
+5. Deploy: `railway up` (builds the Dockerfile; `railway.json` sets the
+   `/api/health` check). Railway injects `$PORT`.
+6. Initialize the cloud DB from your laptop, pointing at Railway's **public**
+   Postgres URL (Postgres service → Connect → Public Network):
+   ```bash
+   export DATABASE_URL="postgresql://...railway public url..."
+   budget-init
+   APP_MODE=demo python -m scripts.seed_demo
+   ```
+   Production uses a **separate** Railway project/DB with `APP_MODE=real` and
+   Cloudflare Access in front (same as below).
+
+### 3a. (Fly alternative) Deploy the public demo first (no real data)
 ```bash
 flyctl launch --no-deploy           # generates/inspects fly.toml
 flyctl postgres create              # a small managed Postgres (the demo DB)

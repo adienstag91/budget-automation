@@ -29,4 +29,6 @@ COPY data ./data
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 
 EXPOSE 8000
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Bind to $PORT when the platform provides one (Railway/Render), else 8000
+# (local docker run, Fly). Shell form so the variable expands.
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]
