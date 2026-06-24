@@ -117,6 +117,44 @@ def fetch_taxonomy(cur):
     return cats, subs
 
 
+# Self-contained demo taxonomy. The project's data/taxonomy/taxonomy.json is
+# deprecated/stale (the DB is the source of truth), so the demo seeds its own
+# category tree when the DB has none — making the demo reproducible on any fresh
+# database. Category names are chosen to line up with kind_for_category() above
+# so merchants land in sensible categories.
+# (category, is_income, is_transfer, [subcategories])
+DEMO_TAXONOMY = [
+    ("Income", True, False, ["Salary", "Transfers In"]),
+    ("Food & Drink", False, False, ["Groceries", "Restaurants", "Coffee"]),
+    ("Shopping", False, False, ["Amazon", "General", "Electronics"]),
+    ("Transportation", False, False, ["Gas", "Transit", "Rideshare"]),
+    ("Utilities", False, False, ["Phone", "Internet", "Electric"]),
+    ("Entertainment", False, False, ["Streaming", "Movies", "Music"]),
+    ("Health", False, False, ["Pharmacy", "Fitness"]),
+    ("Other", False, False, ["Misc"]),
+]
+
+
+def ensure_taxonomy(cur):
+    """Seed a demo category tree if the database has none."""
+    cur.execute("SELECT COUNT(*) FROM taxonomy_categories")
+    if cur.fetchone()[0] > 0:
+        return
+    for order, (cat, is_income, is_transfer, sublist) in enumerate(DEMO_TAXONOMY):
+        cur.execute(
+            "INSERT INTO taxonomy_categories (category, display_order, is_income, is_transfer)"
+            " VALUES (%s, %s, %s, %s) ON CONFLICT (category) DO NOTHING",
+            (cat, order, is_income, is_transfer),
+        )
+        for sub in sublist:
+            cur.execute(
+                "INSERT INTO taxonomy_subcategories (category, subcategory)"
+                " VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                (cat, sub),
+            )
+    print(f"   Seeded demo taxonomy: {len(DEMO_TAXONOMY)} categories")
+
+
 def ensure_accounts(cur):
     cur.execute("SELECT account_id, account_type FROM accounts ORDER BY account_id")
     rows = cur.fetchall()
@@ -204,6 +242,7 @@ def main():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        ensure_taxonomy(cur)
         cats, subs = fetch_taxonomy(cur)
         if not cats:
             print("No taxonomy found. Run `budget-init` first.")
