@@ -50,8 +50,19 @@ else
   budget-init
 fi
 
-echo "• Seeding synthetic demo data ..."
-APP_MODE=demo python -m scripts.seed_demo
+# Only seed when the transactions table is EMPTY. The seed deletes all
+# transactions before inserting synthetic rows, so auto-running it against a
+# database that already has data (e.g. real data) would destroy it. If you want
+# to (re)seed deliberately, run `make seed`.
+txn_count=$($DC exec -T postgres psql -U budget_user -d budget_db -tAc \
+  "SELECT count(*) FROM transactions" 2>/dev/null | tr -d '[:space:]')
+if [ "${txn_count:-0}" = "0" ]; then
+  echo "• Seeding synthetic demo data ..."
+  APP_MODE=demo python -m scripts.seed_demo
+else
+  echo "• transactions already has ${txn_count} rows — skipping demo seed"
+  echo "  (run 'make seed' to replace them with demo data on purpose)"
+fi
 
 cat <<'DONE'
 
