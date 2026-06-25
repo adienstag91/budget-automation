@@ -46,6 +46,37 @@ app.add_middleware(
 )
 
 
+# Optional password gate for the whole app (pages + API). Enabled only when
+# APP_PASSWORD is set — production sets it; the demo and local dev leave it unset
+# and stay open. HTTP Basic over Railway's HTTPS: simple, good for a household.
+# /api/health is exempt so the platform health check still works.
+import base64
+import secrets
+
+APP_PASSWORD = os.getenv("APP_PASSWORD")
+APP_USERNAME = os.getenv("APP_USERNAME", "admin")
+
+
+@app.middleware("http")
+async def basic_auth(request, call_next):
+    if APP_PASSWORD and request.url.path != "/api/health":
+        ok = False
+        header = request.headers.get("authorization", "")
+        if header.startswith("Basic "):
+            try:
+                user, _, pw = base64.b64decode(header[6:]).decode("utf-8").partition(":")
+                ok = secrets.compare_digest(user, APP_USERNAME) and \
+                    secrets.compare_digest(pw, APP_PASSWORD)
+            except Exception:
+                ok = False
+        if not ok:
+            return Response(
+                status_code=401,
+                headers={"WWW-Authenticate": 'Basic realm="Budget"'},
+            )
+    return await call_next(request)
+
+
 def get_db_connection():
     """Get database connection.
 

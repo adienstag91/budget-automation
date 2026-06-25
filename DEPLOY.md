@@ -122,8 +122,30 @@ targets.
    budget-init
    APP_MODE=demo python -m scripts.seed_demo
    ```
-   Production uses a **separate** Railway project/DB with `APP_MODE=real` and
-   Cloudflare Access in front (same as below).
+   Production uses a **separate** Railway project/DB — see below.
+
+### Private production on Railway (real data + password gate)
+A second, independent Railway project. Real data lives only here.
+1. New project + Postgres, app deployed (same order as the demo: `railway init`
+   → `railway up` → `railway add --database postgres`).
+2. App variables:
+   - `DATABASE_URL = ${{Postgres.DATABASE_URL}}`
+   - `APP_MODE=real`
+   - `APP_USERNAME` + `APP_PASSWORD` — enables the built-in password gate, so the
+     whole app (pages + API) requires HTTP Basic auth. `/api/health` stays exempt.
+   - `ANTHROPIC_API_KEY` (optional, for LLM categorization).
+3. Migrate real data from the local DB (schema + data, never via git). Dump the
+   full local DB and restore into the prod Postgres over its public URL:
+   ```bash
+   docker compose exec -T postgres pg_dump --no-owner --no-privileges \
+     -U budget_user budget_db > /tmp/budget_full.sql
+   export DATABASE_URL='<prod Postgres DATABASE_PUBLIC_URL>'
+   docker compose exec -T postgres psql "$DATABASE_URL" \
+     -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+   docker compose exec -T postgres psql "$DATABASE_URL" < /tmp/budget_full.sql
+   unset DATABASE_URL
+   ```
+4. `railway domain` for the URL. Done — only holders of the password get in.
 
 ### 3a. (Fly alternative) Deploy the public demo first (no real data)
 ```bash
