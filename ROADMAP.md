@@ -84,12 +84,13 @@ import.
 ## 🌥️ Productionizing (to use day-to-day + share)
 **Decided architecture** (see `DEPLOY.md`): code is public, real data is private.
 "Demo vs real" is *which `DATABASE_URL` the app points at* + whether auth is on —
-not a toggle inside one DB. Host: **Fly.io** (app + managed Postgres). Auth:
-**Cloudflare Access** (email allow-list for you + spouse, no auth code in-app).
-Repo goes **public** with a public demo.
-- [ ] **Phase 0 — scrub git history** ⚠️ *do before going public.* Remove
-      `amazon_products_analysis.csv` from all history (`git filter-repo`),
-      force-push, re-clone. Steps in `DEPLOY.md`.
+not a toggle inside one DB. Host: **Railway** (app + managed Postgres; chosen over
+Fly because Railway supports a hard spending cap). Auth: **Cloudflare Access**
+(email allow-list for you + spouse, no auth code in-app). Repo goes **public**
+with a public demo.
+- [x] **Phase 0 — scrub git history** — removed `amazon_products_analysis.csv`
+      from all history (`git filter-repo`), force-pushed, re-cloned. Verified
+      clean on every remote ref.
 - [x] **Phase 1 — foundation** — `DATABASE_URL` support in the DB layer
       (`db_connection.py` + `api.py`); `DEPLOY.md` runbook.
 - [x] **Phase 2 — make it deployable** — single-container `Dockerfile` (FastAPI
@@ -100,9 +101,12 @@ Repo goes **public** with a public demo.
 - [x] **Dev/CI convenience** — `make dev` (one-command local: Postgres + init +
       synthetic seed), `Makefile` targets, and `.github/workflows/deploy.yml`
       (auto-deploy the demo on push to `main`; prod stays manual).
-- [ ] **Phase 3 — go live** — deploy public demo first (demo DB, no real data),
-      then private prod: separate managed Postgres, migrate real data via
-      `pg_dump`/`pg_restore` (never git), Cloudflare Access in front.
+- [x] **Phase 3a — public demo live** — deployed to Railway
+      (`budget-demo-production.up.railway.app`): separate Postgres, `APP_MODE=demo`,
+      synthetic seed, demo banner. `railway.json` + `$PORT` in the Dockerfile.
+- [ ] **Phase 3b — private prod** — separate Railway project + managed Postgres,
+      `APP_MODE=real`, migrate real data via `pg_dump`/`pg_restore` (never git),
+      Cloudflare Access in front. Set the hard usage cap before adding a card.
 - [ ] **Automated data sync** _(ambitious — the big quality-of-life win)_ —
       auto-fetch + import data instead of manual export/upload: bank transactions
       via an aggregator API (e.g. Plaid) for Chase, and scripted/scheduled
@@ -110,9 +114,14 @@ Repo goes **public** with a public demo.
       on a schedule, not by hand.
 
 ## 🧹 Tech debt / cleanup
-- Real Amazon analysis CSV was untracked (2026-06-10) but **still exists in git
-  history** — must scrub before the repo goes public (Productionizing → Phase 0;
-  `git filter-repo`, steps in `DEPLOY.md`).
+- ⚠️ **`db_schema.sql` is stale** — it lacks columns the live app needs (e.g.
+  `transactions.merchant_detail`), so `budget-init` produces a schema that 500s
+  the Dashboard/Transactions/Review pages. The Railway demo was fixed by dumping
+  the real schema from the local DB (`pg_dump --schema-only`) and loading that
+  instead. **Regenerate `db_schema.sql` from the real DB before relying on
+  `budget-init` for prod** (the `taxonomy.json` loader is likewise retired/stale).
+- ~~Real Amazon analysis CSV in git history~~ — **done**: scrubbed with
+  `git filter-repo`, force-pushed, verified clean.
 - Venmo: surface the funding-source classification + a re-run control in the
   Import UI (currently API-only).
 - See `TECH_DEBT.md` for the running list.
