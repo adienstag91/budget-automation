@@ -2311,6 +2311,10 @@ def recategorize_review_queue():
 
         categorized = orchestrator.categorize_batch(transactions)
 
+        # Validate suggestions against the taxonomy so a hallucinated
+        # (category, subcategory) can't violate the FK and abort the whole run.
+        valid_pairs = _valid_taxonomy_pairs(conn)
+
         rule_matched = llm_matched = cleared = still_flagged = unresolved = 0
         write_cursor = conn.cursor()
         for txn in categorized:
@@ -2322,8 +2326,25 @@ def recategorize_review_queue():
                 unresolved += 1
                 continue
 
+            category = txn.category
+            subcategory = txn.subcategory
+            # If the exact pair isn't in the taxonomy: keep the category and drop
+            # an invalid subcategory (still useful, stays flagged for manual
+            # subcategory assignment); skip entirely if the category itself is
+            # unknown.
+            coerced = False
+            if (category, subcategory) not in valid_pairs:
+                if (category, None) in valid_pairs:
+                    subcategory = None
+                    coerced = True
+                else:
+                    unresolved += 1
+                    continue
+
             confidence = txn.category_confidence or 0.0
-            clear = confidence >= review_threshold
+            # A coerced (category-only) result always needs manual review for the
+            # subcategory, regardless of confidence.
+            clear = (confidence >= review_threshold) and not coerced
             new_needs_review = not clear
 
             write_cursor.execute(
@@ -2338,8 +2359,8 @@ def recategorize_review_queue():
                 WHERE txn_id = %s
                 """,
                 (
-                    txn.category,
-                    txn.subcategory,
+                    category,
+                    subcategory,
                     txn.category_source,
                     confidence,
                     new_needs_review,
