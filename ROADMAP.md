@@ -104,9 +104,13 @@ with a public demo.
 - [x] **Phase 3a — public demo live** — deployed to Railway
       (`budget-demo-production.up.railway.app`): separate Postgres, `APP_MODE=demo`,
       synthetic seed, demo banner. `railway.json` + `$PORT` in the Dockerfile.
-- [ ] **Phase 3b — private prod** — separate Railway project + managed Postgres,
-      `APP_MODE=real`, migrate real data via `pg_dump`/`pg_restore` (never git),
-      Cloudflare Access in front. Set the hard usage cap before adding a card.
+- [x] **Phase 3b — private prod live** — separate Railway project (`budget-prod`)
+      + managed Postgres, `APP_MODE=real`, real data migrated via
+      `pg_dump`/restore (never git), behind a built-in **password gate**
+      (`APP_PASSWORD`; simpler than Cloudflare Access, no domain needed). Postgres
+      public proxy disabled; setup secrets rotated. See `MAINTENANCE.md`.
+- [ ] **Make the repo public** — unblocked (GitHub purged the old commits;
+      verified 404). Flip in GitHub Settings when ready.
 - [ ] **Automated data sync** _(ambitious — the big quality-of-life win)_ —
       auto-fetch + import data instead of manual export/upload: bank transactions
       via an aggregator API (e.g. Plaid) for Chase, and scripted/scheduled

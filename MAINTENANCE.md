@@ -145,14 +145,15 @@ the only endpoint exempt from the password gate.)
 
 ## Outstanding follow-ups
 
-- [ ] **Disable the prod Postgres public proxy** once data migration/backups are
-  done (Railway → Postgres → Settings → Networking). The app uses the internal
-  URL, so this won't affect it, and it neutralizes the leaked DB password from
-  outside.
-- [ ] **Rotate `APP_PASSWORD`** (the value used during setup was exposed) and the
-  prod DB password, to be safe.
-- [ ] **Make the repo public** only after GitHub confirms the old commits return
-  404 (pull-request reference purge in progress) — see `DEPLOY.md` Phase 0.
+- [x] **Prod Postgres public proxy disabled** — app uses the internal URL, so
+  the leaked DB password is no longer usable from outside. Re-enable temporarily
+  (Railway → Postgres → Settings → Networking) only when you need laptop access
+  for a backup/schema change, then disable again.
+- [x] **`APP_PASSWORD` rotated** — the value exposed during setup is dead.
+- [x] **Sensitive git history purged** — GitHub confirmed the old commits +
+  `amazon_products_analysis.csv` return 404 (verified). Repo is safe to publish.
+- [ ] **Make the repo public** — now unblocked; flip it in GitHub → Settings →
+  General → Danger Zone when ready. (Publishes code only; prod stays private.)
 - [ ] Optional: wire **Railway auto-deploy** (connect the GitHub repo) so pushes
   redeploy automatically instead of manual `railway up`.
 
