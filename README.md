@@ -30,7 +30,7 @@ An intelligent budgeting system that learns from your historical spending patter
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/budget-automation.git
+git clone https://github.com/adienstag91/budget-automation.git
 cd budget-automation
 
 # 2. Install Python package
@@ -90,6 +90,24 @@ FastAPI server, so no backend URL is hardcoded.
 dips, major purchases) · Pivot · Transactions (filter/search/sort, bulk edit, CSV
 export) · Import (Chase / Amazon / Venmo, preview → commit) · Review Queue ·
 Settings → Rules / Taxonomy.
+
+## ☁️ Deployment
+
+The app is deployed as a **single container** (FastAPI serves the built React
+bundle + `/api`) on **Railway**:
+
+- **Production** — real data, behind an env-configured password gate
+  (`APP_PASSWORD`); reachable only with the login.
+- **Demo** — synthetic data (`scripts/seed_demo.py`), public.
+
+"Demo vs. real" is just which database `DATABASE_URL` points at plus whether the
+password gate is on — same code, different env vars. It's host-agnostic (needs
+`DATABASE_URL`, `APP_MODE`, and a `$PORT` to bind).
+
+- **[DEPLOY.md](DEPLOY.md)** — one-time setup runbook (first deploy, managed
+  Postgres, data migration, safe read-only troubleshooting).
+- **[MAINTENANCE.md](MAINTENANCE.md)** — day-to-day dev → test → deploy workflow,
+  ops commands, backups, secrets.
 
 ## 📁 Project Structure
 
@@ -224,20 +242,12 @@ REVIEW_THRESHOLD=0.90
 ENABLE_LLM=true
 ```
 
-### Taxonomy (data/taxonomy/taxonomy.json)
+### Taxonomy
 
-Your budget categories. Modify to match your spending:
-
-```json
-{
-  "categories": [
-    {
-      "name": "Groceries",
-      "subcategories": ["Stop & Shop", "Trader Joes", "Costco"]
-    }
-  ]
-}
-```
+Your budget category tree. **The database is the source of truth** — manage it
+in-app via the **Taxonomy page** (`/settings/taxonomy`) or the `/api/taxonomy/*`
+endpoints (add / rename / move / merge / delete; edits cascade to transactions
+and rules). `data/taxonomy/taxonomy.json` is **deprecated/retired** — don't edit it.
 
 ## 📊 Generated Rules
 
@@ -345,8 +355,8 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Repository:** https://github.com/yourusername/budget-automation
-- **Issues:** https://github.com/yourusername/budget-automation/issues
+- **Repository:** https://github.com/adienstag91/budget-automation
+- **Issues:** https://github.com/adienstag91/budget-automation/issues
 - **Anthropic API:** https://console.anthropic.com/
 
 ---
