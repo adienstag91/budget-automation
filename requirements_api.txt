@@ -5,3 +5,5 @@ uvicorn[standard]==0.27.0
 psycopg2-binary==2.9.9
 pydantic==2.5.3
 python-dotenv==1.0.0
+python-multipart==0.0.9    # CSV upload endpoints (UploadFile/Form)
+anthropic==0.39.0          # LLM categorization in the import flow

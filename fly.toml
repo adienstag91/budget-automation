@@ -1,0 +1,32 @@
+# Fly.io config for the PUBLIC DEMO app (synthetic data).
+# Private production runs as a separate Fly app with APP_MODE=real, its own
+# managed Postgres, and Cloudflare Access in front — see DEPLOY.md.
+
+app = "budget-automation-demo"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  APP_MODE = "demo"
+  # DATABASE_URL is injected by `flyctl postgres attach`.
+  # ANTHROPIC_API_KEY (optional) is set via `flyctl secrets set`.
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

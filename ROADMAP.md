@@ -1,6 +1,6 @@
 # Budget Automation — Roadmap
 
-_Last updated: 2026-06-10_
+_Last updated: 2026-06-19_
 
 ## Vision
 A personal budgeting system for joint household finances: import bank/Venmo/Amazon
@@ -24,8 +24,11 @@ import.
   views: spending / income / everything (transfers netted, refunds offset).
 - **Import** — Chase CSV, Amazon, Venmo, each with upload → preview → commit
   (nothing written until approved). Per-source "last imported" dates.
-- **Amazon enrichment** — expand orders into line items; soft-supersede the card
-  charge (`exclude_from_budget`) instead of deleting.
+- **Amazon enrichment (Phase 1)** — import all orders (matched *and* unmatched),
+  expand each into per-item line items, soft-supersede the matched card charge
+  (`exclude_from_budget`) instead of deleting, record the payment source in notes
+  (credit card vs. "unknown / possibly gift card"), and send everything to the
+  Review Queue for a manual pass. CLI + Import UI (upload → preview → commit).
 - **Venmo enrichment** — balance-aware, funding-source ingestion: classifies each
   Venmo row by Funding Source / Destination, ingests balance income/expense as
   real transactions, and supersedes the matching bank cashout. Deterministic
@@ -46,19 +49,68 @@ import.
 - [ ] **Saved filter presets** on Transactions (save & re-apply common filters).
 - [ ] **Budgets / targets** — set a monthly target per category, track actual vs
       target (over/under) on the Dashboard or a dedicated page.
+- [ ] **Amazon enrichment — returns & refunds (Phase 2)** — the real accuracy
+      fix. Today a return double-distorts the books: the line item still counts as
+      spend *and* the card refund lands as stray income/uncategorized credit.
+      - ⏸ **Paused — waiting on a fresh Amazon export.** Source: Amazon **Privacy
+        Central → "Request My Data" → Your Orders** (the legacy instant "Order
+        History Reports" CSV is retired). The zip includes separate **Orders**,
+        **Returns**, and **Refunds** spreadsheets — request once, covers both
+        purchases and returns. Requested ~2026-06-20; ETA hours–days. Resume here
+        when it arrives.
+      - [x] _Quick win:_ read `payment_instrument_type` (was captured at import
+            but ignored) to label payment source from Amazon's own data —
+            distinguishes gift card vs. card, records the instrument (e.g.
+            "Visa - 1234") in notes, and flags card orders with no matching
+            charge. Falls back to match-based inference when Amazon is silent.
+      - [ ] Import the Amazon **Returns** + **Refunds** exports into a staging
+            table (`amazon_returns_raw`), same upload → preview → commit flow.
+      - [ ] Auto-mark returned line items (`is_return`, and exclude/net them out)
+            so a returned purchase stops counting as spend.
+      - [ ] Match the **card refund credit** back to the original order/item and
+            net it against the original category, rather than leaving it as a
+            floating income/credit row.
+- [ ] **Amazon enrichment — gift cards & partial payments (Phase 3)** — later;
+      lower frequency, higher complexity.
+      - [ ] Gift-card balance tracking — treat gift-card-funded orders as drawing
+            down a tracked balance, not as card spend.
+      - [ ] Partial-payment splitting — one order paid part gift card / part card
+            won't match the card charge on total; split line items across funding
+            sources (these fall through as "unmatched/unknown" today).
 - [ ] **More enrichment sources** — line-item enrichment for Costco, Target, etc.
       (same pattern as Amazon: expand a generic store charge into its items, or
       ingest an itemized receipt/order export).
 
 ## 🌥️ Productionizing (to use day-to-day + share)
-- [ ] **Host in the cloud** — deploy the API + frontend + Postgres so it's usable
-      off this laptop (e.g. Fly.io / Render / Railway; managed Postgres).
-- [ ] **Password protection / auth** — so the household (e.g. spouse) can log in
-      and use it. Start with simple auth; multi-user later.
-- [ ] **Demo data + privacy** — separate the real spending DB from a shareable
-      **demo seed**: a script that populates synthetic/anonymized transactions so
-      the app can be demoed publicly without exposing real finances. (Pair with
-      scrubbing real data from git history — see below.)
+**Decided architecture** (see `DEPLOY.md`): code is public, real data is private.
+"Demo vs real" is *which `DATABASE_URL` the app points at* + whether auth is on —
+not a toggle inside one DB. Host: **Railway** (app + managed Postgres; chosen over
+Fly because Railway supports a hard spending cap). Auth: **Cloudflare Access**
+(email allow-list for you + spouse, no auth code in-app). Repo goes **public**
+with a public demo.
+- [x] **Phase 0 — scrub git history** — removed `amazon_products_analysis.csv`
+      from all history (`git filter-repo`), force-pushed, re-cloned. Verified
+      clean on every remote ref.
+- [x] **Phase 1 — foundation** — `DATABASE_URL` support in the DB layer
+      (`db_connection.py` + `api.py`); `DEPLOY.md` runbook.
+- [x] **Phase 2 — make it deployable** — single-container `Dockerfile` (FastAPI
+      serves the `vite build` bundle + `/api`), `scripts/seed_demo.py` synthetic
+      seed, `/api/config` + `APP_MODE=demo` banner, `fly.toml`, `.dockerignore`,
+      `.env.example`. *Not yet built/run in a real container — verify the image
+      builds before deploying.*
+- [x] **Dev/CI convenience** — `make dev` (one-command local: Postgres + init +
+      synthetic seed), `Makefile` targets, and `.github/workflows/deploy.yml`
+      (auto-deploy the demo on push to `main`; prod stays manual).
+- [x] **Phase 3a — public demo live** — deployed to Railway
+      (`budget-demo-production.up.railway.app`): separate Postgres, `APP_MODE=demo`,
+      synthetic seed, demo banner. `railway.json` + `$PORT` in the Dockerfile.
+- [x] **Phase 3b — private prod live** — separate Railway project (`budget-prod`)
+      + managed Postgres, `APP_MODE=real`, real data migrated via
+      `pg_dump`/restore (never git), behind a built-in **password gate**
+      (`APP_PASSWORD`; simpler than Cloudflare Access, no domain needed). Postgres
+      public proxy disabled; setup secrets rotated. See `MAINTENANCE.md`.
+- [ ] **Make the repo public** — unblocked (GitHub purged the old commits;
+      verified 404). Flip in GitHub Settings when ready.
 - [ ] **Automated data sync** _(ambitious — the big quality-of-life win)_ —
       auto-fetch + import data instead of manual export/upload: bank transactions
       via an aggregator API (e.g. Plaid) for Chase, and scripted/scheduled
@@ -66,8 +118,14 @@ import.
       on a schedule, not by hand.
 
 ## 🧹 Tech debt / cleanup
-- Real Amazon analysis CSV was untracked (2026-06-10) but **still exists in git
-  history** — scrub if the repo goes public (`git filter-repo`).
+- ⚠️ **`db_schema.sql` is stale** — it lacks columns the live app needs (e.g.
+  `transactions.merchant_detail`), so `budget-init` produces a schema that 500s
+  the Dashboard/Transactions/Review pages. The Railway demo was fixed by dumping
+  the real schema from the local DB (`pg_dump --schema-only`) and loading that
+  instead. **Regenerate `db_schema.sql` from the real DB before relying on
+  `budget-init` for prod** (the `taxonomy.json` loader is likewise retired/stale).
+- ~~Real Amazon analysis CSV in git history~~ — **done**: scrubbed with
+  `git filter-repo`, force-pushed, verified clean.
 - Venmo: surface the funding-source classification + a re-run control in the
   Import UI (currently API-only).
 - See `TECH_DEBT.md` for the running list.

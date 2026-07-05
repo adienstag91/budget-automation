@@ -922,6 +922,12 @@ body {
   color: var(--muted);
 }
 
+.order-payment {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .src-badge,
 .dup-badge,
 .review-badge,

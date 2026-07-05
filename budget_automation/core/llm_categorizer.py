@@ -27,6 +27,9 @@ class LLMCategorizer:
             api_key: Anthropic API key (or read from ANTHROPIC_API_KEY env var)
         """
         self.taxonomy = taxonomy
+        # Model is env-configurable so a future model retirement is a one-line
+        # .env change, not a code edit. Default to a current Claude model.
+        self.model = os.environ.get('LLM_MODEL', 'claude-sonnet-4-6')
         self.api_key = api_key or os.environ.get('ANTHROPIC_API_KEY')
         
         if not self.api_key:
@@ -103,7 +106,7 @@ Rules:
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=self.model,
                 max_tokens=300,
                 temperature=0.0,  # Deterministic
                 messages=[{
@@ -194,7 +197,7 @@ Rules:
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=self.model,
                 max_tokens=4000,  # Larger for batch responses
                 temperature=0.0,
                 messages=[{

@@ -9,8 +9,9 @@ Run with: uvicorn api:app --reload --port 8000
 
 from fastapi import FastAPI, HTTPException, Query, Body, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from datetime import datetime, date
+from pathlib import Path
 from typing import Optional, List
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -29,6 +30,12 @@ load_dotenv()
 
 app = FastAPI(title="Budget Pivot API", version="1.0.0")
 
+# Built React bundle (vite build → frontend/dist). Present in the deployed
+# container; absent in local dev (where Vite serves the frontend on :5173 and
+# proxies /api here). When present, this process serves the SPA too, so the
+# whole app is one container behind one origin.
+FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
+
 # Enable CORS for your frontend (Lovable will need this)
 app.add_middleware(
     CORSMiddleware,
@@ -39,8 +46,46 @@ app.add_middleware(
 )
 
 
+# Optional password gate for the whole app (pages + API). Enabled only when
+# APP_PASSWORD is set — production sets it; the demo and local dev leave it unset
+# and stay open. HTTP Basic over Railway's HTTPS: simple, good for a household.
+# /api/health is exempt so the platform health check still works.
+import base64
+import secrets
+
+APP_PASSWORD = os.getenv("APP_PASSWORD")
+APP_USERNAME = os.getenv("APP_USERNAME", "admin")
+
+
+@app.middleware("http")
+async def basic_auth(request, call_next):
+    if APP_PASSWORD and request.url.path != "/api/health":
+        ok = False
+        header = request.headers.get("authorization", "")
+        if header.startswith("Basic "):
+            try:
+                user, _, pw = base64.b64decode(header[6:]).decode("utf-8").partition(":")
+                ok = secrets.compare_digest(user, APP_USERNAME) and \
+                    secrets.compare_digest(pw, APP_PASSWORD)
+            except Exception:
+                ok = False
+        if not ok:
+            return Response(
+                status_code=401,
+                headers={"WWW-Authenticate": 'Basic realm="Budget"'},
+            )
+    return await call_next(request)
+
+
 def get_db_connection():
-    """Get database connection"""
+    """Get database connection.
+
+    Prefer a single DATABASE_URL (what managed hosts provide); fall back to
+    discrete DB_* vars for local dev.
+    """
+    dsn = os.getenv("DATABASE_URL")
+    if dsn:
+        return psycopg2.connect(dsn)
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
         port=os.getenv("DB_PORT", 5433),
@@ -133,7 +178,10 @@ class SubcategoryRef(BaseModel):
 
 @app.get("/")
 def root():
-    """Health check endpoint"""
+    """Serve the SPA in the deployed container; health JSON in local dev."""
+    index = FRONTEND_DIST / "index.html"
+    if index.exists():
+        return FileResponse(index)
     return {
         "status": "ok",
         "message": "Budget Pivot API is running",
@@ -143,6 +191,19 @@ def root():
             "categories": "/api/categories"
         }
     }
+
+
+@app.get("/api/health")
+def health():
+    """Programmatic health check (always JSON, used by Fly checks)."""
+    return {"status": "ok"}
+
+
+@app.get("/api/config")
+def get_config():
+    """Frontend bootstrap config. `mode` drives the demo banner."""
+    mode = os.getenv("APP_MODE", "real")
+    return {"mode": mode, "demo": mode == "demo"}
 
 
 @app.get("/api/pivot", response_model=PivotResponse)
@@ -2250,6 +2311,10 @@ def recategorize_review_queue():
 
         categorized = orchestrator.categorize_batch(transactions)
 
+        # Validate suggestions against the taxonomy so a hallucinated
+        # (category, subcategory) can't violate the FK and abort the whole run.
+        valid_pairs = _valid_taxonomy_pairs(conn)
+
         rule_matched = llm_matched = cleared = still_flagged = unresolved = 0
         write_cursor = conn.cursor()
         for txn in categorized:
@@ -2261,8 +2326,25 @@ def recategorize_review_queue():
                 unresolved += 1
                 continue
 
+            category = txn.category
+            subcategory = txn.subcategory
+            # If the exact pair isn't in the taxonomy: keep the category and drop
+            # an invalid subcategory (still useful, stays flagged for manual
+            # subcategory assignment); skip entirely if the category itself is
+            # unknown.
+            coerced = False
+            if (category, subcategory) not in valid_pairs:
+                if (category, None) in valid_pairs:
+                    subcategory = None
+                    coerced = True
+                else:
+                    unresolved += 1
+                    continue
+
             confidence = txn.category_confidence or 0.0
-            clear = confidence >= review_threshold
+            # A coerced (category-only) result always needs manual review for the
+            # subcategory, regardless of confidence.
+            clear = (confidence >= review_threshold) and not coerced
             new_needs_review = not clear
 
             write_cursor.execute(
@@ -2277,8 +2359,8 @@ def recategorize_review_queue():
                 WHERE txn_id = %s
                 """,
                 (
-                    txn.category,
-                    txn.subcategory,
+                    category,
+                    subcategory,
                     txn.category_source,
                     confidence,
                     new_needs_review,
@@ -2607,6 +2689,25 @@ def import_last_dates():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Serve the built frontend (single-container deploy) -----------------------
+# Registered LAST so every /api/* route above wins first. Any other path serves
+# a real static file if one exists (JS/CSS/favicon), else falls back to
+# index.html for client-side routing (react-router BrowserRouter deep links).
+if (FRONTEND_DIST / "index.html").exists():
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        candidate = (FRONTEND_DIST / full_path).resolve()
+        # Guard against path traversal; only serve files under the dist dir.
+        if (
+            full_path
+            and FRONTEND_DIST.resolve() in candidate.parents
+            and candidate.is_file()
+        ):
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")
 
 
 if __name__ == "__main__":

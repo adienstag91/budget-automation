@@ -31,6 +31,13 @@ def get_db_connection(
     Returns:
         psycopg2 connection object
     """
+    # Managed hosts (Fly.io, Render, Railway, …) provide a single DATABASE_URL.
+    # Prefer it when no explicit overrides are passed; fall back to discrete
+    # DB_* vars for local dev.
+    dsn = os.getenv('DATABASE_URL')
+    if dsn and not any([host, port, database, user, password]):
+        return psycopg2.connect(dsn)
+
     return psycopg2.connect(
         host=host or os.getenv('DB_HOST', 'localhost'),
         port=port or int(os.getenv('DB_PORT', '5432')),

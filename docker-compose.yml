@@ -11,9 +11,10 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./src/budget_automation/db/db_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      # Future: Add seed data here
-      # - ./pipeline/seed_taxonomy.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      # Schema is applied by `budget-init` (it owns the full init: schema +
+      # taxonomy + rules + accounts), so we don't auto-mount it here. Use
+      # `make dev` / scripts/dev_setup.sh for a one-command setup.
+      # - ./budget_automation/db/db_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U budget_user -d budget_db"]
       interval: 10s

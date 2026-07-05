@@ -4,6 +4,33 @@
 
 ---
 
+## ✅ Resolved in the productionizing session (2026-06)
+
+The app was deployed to Railway (public demo + private password-gated prod) this
+session. See `DEPLOY.md` / `MAINTENANCE.md`. Fixes made along the way:
+
+- **Deploy config drift → `DATABASE_URL` support.** `db_connection.py` + the inline
+  connector in `api.py` now prefer a single `DATABASE_URL` (what managed hosts
+  inject) over the discrete `DB_*` vars. Container binds `$PORT`.
+- **`data/taxonomy/taxonomy.json` retired (stale).** `budget-init` could not load
+  it (`KeyError 'name'`). Taxonomy is DB-sourced; the demo seed builds its own
+  category tree. Don't use the JSON.
+- **`db_schema.sql` was stale** (missing `transactions.merchant_detail` etc.) so
+  `budget-init` produced a schema that 500'd several pages. Regenerated from the
+  live DB (`pg_dump --schema-only`). **Keep it in sync with the real DB.**
+- **LLM model id retirement.** `llm_categorizer.py` hardcoded
+  `claude-sonnet-4-20250514`, which now 404s; errors were swallowed so nothing
+  categorized. Now env-configurable via `LLM_MODEL` (default a current model).
+- **`recategorize-review` FK crash.** A hallucinated `(category, subcategory)`
+  (e.g. `Entertainment/Races`) violated the FK and aborted the whole run. Now
+  validated against the taxonomy (keeps a valid category, drops a bad subcategory).
+- **Demo-seed data-loss footgun.** `make dev` auto-ran the seed, which
+  `DELETE`s all transactions — it wiped a populated DB once. `scripts/dev_setup.sh`
+  now only seeds an **empty** transactions table; use `make seed` to reseed on
+  purpose.
+
+---
+
 ## 🔴 High Priority
 
 ### ✅ LLM Categorization Broken — RESOLVED 2026-06-02
@@ -214,7 +241,9 @@ Removed obsolete `version: '3.8'` line from `docker-compose.yml` (2026-02-06).
 ## 📝 Documentation Gaps
 
 ### Missing Documentation
-- [ ] README.md needs update (still references ETL architecture)
+- [x] README.md refreshed (2026-06): web-app quickstart, deployment section,
+      real repo URL, taxonomy managed in-app. Could still use a fuller pass
+      (rule counts, `black src/` → `budget_automation/`, `docs/` links).
 - [ ] API documentation for enrichment scripts
 - [ ] Database schema diagram
 - [ ] Onboarding guide for contributors

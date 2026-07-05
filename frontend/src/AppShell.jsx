@@ -13,7 +13,27 @@ import TaxonomyPage from "./TaxonomyPage.jsx";
 import RulesPage from "./RulesPage.jsx";
 import ImportPage from "./ImportPage.jsx";
 import DashboardPage from "./DashboardPage.jsx";
-import { fetchStats } from "./api.js";
+import { fetchStats, fetchConfig } from "./api.js";
+
+// Shown only when the backend reports APP_MODE=demo, so the public showcase
+// instance is unmistakably fake data (real data lives behind auth elsewhere).
+function DemoBanner() {
+  return (
+    <div
+      style={{
+        background: "#92400e",
+        color: "#fff",
+        padding: "6px 16px",
+        fontSize: 13,
+        fontWeight: 600,
+        textAlign: "center",
+        letterSpacing: 0.2,
+      }}
+    >
+      Demo — synthetic data. Not real finances.
+    </div>
+  );
+}
 
 function Sidebar({ reviewCount, onReviewCountChange }) {
   // Refresh the badge whenever the route is the review queue, and on mount.
@@ -62,6 +82,7 @@ function Sidebar({ reviewCount, onReviewCountChange }) {
 
 export default function AppShell() {
   const [reviewCount, setReviewCount] = useState(0);
+  const [isDemo, setIsDemo] = useState(false);
 
   // Editing a transaction can clear its needs_review flag, so refresh the badge.
   const refreshReviewCount = useCallback(() => {
@@ -70,8 +91,15 @@ export default function AppShell() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetchConfig()
+      .then((c) => setIsDemo(Boolean(c.demo)))
+      .catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
+      {isDemo && <DemoBanner />}
       <div className="app-shell">
         <Sidebar
           reviewCount={reviewCount}

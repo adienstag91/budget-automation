@@ -1,0 +1,29 @@
+# Keep the build context small and free of secrets/data.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Node / Python build artifacts (frontend is rebuilt inside the image)
+frontend/node_modules
+frontend/dist
+**/__pycache__
+*.pyc
+.venv
+venv
+.pytest_cache
+.mypy_cache
+
+# Never ship real financial data
+*.csv
+*.CSV
+data/uploads/*
+data/exports/*
+!data/uploads/.gitkeep
+!data/exports/.gitkeep
+
+# Docs / tests not needed at runtime
+tests
+docs
+*.md

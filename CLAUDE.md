@@ -304,11 +304,45 @@ When adding new normalization patterns, update `merchant_normalizer.py:normalize
 
 ## Environment Variables
 
-Required in `.env`:
+Local dev (`.env`):
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Database connection
+  (local Docker Postgres, port 5433)
 - `ANTHROPIC_API_KEY`: Optional, for LLM categorization
 - `REVIEW_THRESHOLD`: Default 0.90 (90% confidence)
 - `ENABLE_LLM`: Default true
+- `LLM_MODEL`: Claude model id for categorization (default a current model;
+  override if one is retired — a retired id returns 404 and silently categorizes
+  nothing)
+
+Managed hosts / production (injected as env vars, never in git):
+- `DATABASE_URL`: single connection string; **takes precedence** over the `DB_*`
+  vars (see `db_connection.py` and the inline connector in `api.py`)
+- `APP_MODE`: `real` (default) or `demo` (shows the demo banner via `/api/config`;
+  lets `scripts.seed_demo` run)
+- `APP_USERNAME` / `APP_PASSWORD`: when `APP_PASSWORD` is set, the whole app is
+  behind an HTTP Basic password gate (`/api/health` exempt). Prod sets it; demo
+  and local dev leave it unset (open).
+
+## Deployment & Operations
+
+**Production is live on Railway.** The app is deployed as a single container
+(FastAPI serves the built React bundle + `/api`).
+
+- **Prod** (`budget-prod`): real data, `APP_MODE=real`, behind the password gate.
+- **Demo** (`budget-demo`): synthetic seed (`scripts/seed_demo.py`), public.
+- **Deploy**: `railway up --service <app>` (manual; check `railway status` first —
+  two projects exist). Ships **code only** — schema changes must be applied to the
+  prod DB separately; data lives in the managed Postgres and persists.
+- **Local dev**: `make dev` (one-command setup; won't seed a populated DB),
+  `make api`, `make web`. See the `Makefile`.
+
+Full docs:
+- **`MAINTENANCE.md`** — day-to-day dev → test → deploy loop, ops commands,
+  backups, schema-change procedure, secrets, follow-ups.
+- **`DEPLOY.md`** — one-time setup runbook (history scrub, first deploy, data
+  migration, read-only DB role for safe troubleshooting).
+- **`ROADMAP.md`** — backlog + productionizing status (this is the "TODO"; there
+  is no separate TODO.md).
 
 ## Known Issues and Gotchas
 
