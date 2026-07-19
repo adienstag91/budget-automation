@@ -523,6 +523,8 @@ function AmazonImport({ lastDates }) {
 //     split into detailed VENMO FROM rows (one per matched income payment).
 //   - "enrich" rows: a generic Chase VENMO OUTGOING debit is relabeled VENMO TO
 //     with the payee + note (in place).
+//   - "unmatched" rows: staging rows that should have a bank-side match but
+//     don't — shown with the reason so misses aren't silent (not committable).
 // ---------------------------------------------------------------------------
 function VenmoImport({ lastDates, onImported }) {
   const [file, setFile] = useState(null);
@@ -555,8 +557,13 @@ function VenmoImport({ lastDates, onImported }) {
     venmoEnrichPreview()
       .then((data) => {
         setPlan(data);
-        // Default: select every proposed enrichment.
-        setSelected(new Set(data.rows.map((r) => r.key)));
+        // Default: select every proposed enrichment (unmatched rows are
+        // informational only — nothing to apply).
+        setSelected(
+          new Set(
+            data.rows.filter((r) => r.kind !== "unmatched").map((r) => r.key)
+          )
+        );
       })
       .catch((e) => setError(e.message))
       .finally(() => setBusy(false));
@@ -642,6 +649,19 @@ function VenmoImport({ lastDates, onImported }) {
             <span className="stat">
               relabel <b>{plan.totals.outgoing_relabeled}</b>
             </span>
+            {(plan.totals.unmatched_outgoing || 0) +
+              (plan.totals.unmatched_transfers || 0) >
+              0 && (
+              <span className="stat">
+                <span className="review-badge">
+                  unmatched{" "}
+                  <b>
+                    {(plan.totals.unmatched_outgoing || 0) +
+                      (plan.totals.unmatched_transfers || 0)}
+                  </b>
+                </span>
+              </span>
+            )}
             <div className="spacer" />
             <button
               className="import-btn"
@@ -672,11 +692,13 @@ function VenmoImport({ lastDates, onImported }) {
                 {plan.rows.map((r) => (
                   <tr key={r.key}>
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(r.key)}
-                        onChange={() => toggleRow(r.key)}
-                      />
+                      {r.kind !== "unmatched" && (
+                        <input
+                          type="checkbox"
+                          checked={selected.has(r.key)}
+                          onChange={() => toggleRow(r.key)}
+                        />
+                      )}
                     </td>
                     <td>{(r.date || "").slice(0, 10)}</td>
                     <td>
@@ -686,6 +708,8 @@ function VenmoImport({ lastDates, onImported }) {
                         <span className="src-badge src-rule">expense</span>
                       ) : r.kind === "supersede" ? (
                         <span className="dup-badge">cashout</span>
+                      ) : r.kind === "unmatched" ? (
+                        <span className="review-badge">unmatched</span>
                       ) : (
                         <span className="src-badge src-rule">relabel</span>
                       )}
@@ -698,6 +722,16 @@ function VenmoImport({ lastDates, onImported }) {
                         </>
                       ) : r.kind === "supersede" ? (
                         <>Supersede cashout (@{r.venmo_account}) — itemized above</>
+                      ) : r.kind === "unmatched" ? (
+                        <>
+                          {r.target === "cashout"
+                            ? `Cashout transfer (@${r.venmo_account})`
+                            : `VENMO TO ${r.to_name} (@${r.venmo_account})`}
+                          {r.note ? ` — ${r.note.slice(0, 50)}` : ""}
+                          <div className="order-payment">
+                            No matching bank transaction: {r.reason}
+                          </div>
+                        </>
                       ) : (
                         <>
                           VENMO TO {r.to_name} (@{r.venmo_account})

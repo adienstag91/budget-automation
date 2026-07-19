@@ -29,6 +29,11 @@ from budget_automation.utils.db_connection import get_db_connection
 INGEST_ACCOUNT_ID = 1
 VENMO_BALANCE = "Venmo balance"
 
+# Bank posting can lag the Venmo payment date by several business days (weekends
+# + bank holidays), so both match windows allow ±5 calendar days.
+CASHOUT_WINDOW_DAYS = 5
+OUTGOING_WINDOW_DAYS = 5
+
 
 def _iso(d):
     """Date/datetime -> ISO string (JSON-safe)."""
@@ -99,12 +104,50 @@ def _find_unused(conn, merchant_norm, direction, pay_date, amount, used, window_
     return None
 
 
+def _diagnose_unmatched(conn, merchant_norm, direction, pay_date, amount, used,
+                        window_days):
+    """Explain why a staging row found no bank txn: same-amount candidate outside
+    the window, all candidates already claimed, or none at all."""
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT txn_id, txn_date FROM transactions
+        WHERE merchant_norm = %s AND direction = %s AND amount = %s
+        ORDER BY ABS(txn_date - %s)
+        LIMIT 5
+        """,
+        (merchant_norm, direction, amount, pay_date),
+    )
+    candidates = cur.fetchall()
+    cur.close()
+    if not candidates:
+        return (
+            f"no bank {merchant_norm} of this amount found — bank statement not "
+            "imported for this period, or the bank amount differs (e.g. the "
+            "payment was split between Venmo balance and bank)"
+        )
+    unclaimed = [(tid, d) for tid, d in candidates if tid not in used]
+    if not unclaimed:
+        return (
+            "every same-amount bank txn nearby is already matched to another "
+            "Venmo payment"
+        )
+    tid, d = unclaimed[0]
+    days = abs((d - pay_date).days)
+    return (
+        f"nearest same-amount bank txn is {days} days away ({_iso(d)}, "
+        f"txn #{tid}) — outside the ±{window_days}-day match window"
+    )
+
+
 def build_venmo_enrichment_plan(conn):
     """
     Read-only enrichment plan (funding-source ingestion). Writes nothing.
 
     Returns { totals, rows: [{kind, key, ...}] } where kind is one of
-    income | expense | supersede | relabel.
+    income | expense | supersede | relabel | unmatched. "unmatched" rows are
+    informational only (a transfer/bank-funded debit with no matching bank txn,
+    with a `reason` explaining why) — they cannot be committed.
     """
     income, expense, transfers, bank_out = _classify(_get_unenriched_staging(conn))
 
@@ -128,11 +171,23 @@ def build_venmo_enrichment_plan(conn):
             "venmo_account": r["account_owner"],
         })
 
+    unmatched = []
+
     used_c, superseded = set(), 0
     for r in transfers:
         cid = _find_unused(conn, "VENMO CASHOUT", "credit",
-                           r["transaction_date"], r["amount"], used_c, 5)
+                           r["transaction_date"], r["amount"], used_c,
+                           CASHOUT_WINDOW_DAYS)
         if cid is None:
+            unmatched.append({
+                "kind": "unmatched", "key": f"unmatched:{r['venmo_id']}",
+                "target": "cashout",
+                "date": _iso(r["transaction_date"]), "amount": r["amount"],
+                "note": r["note"], "venmo_account": r["account_owner"],
+                "reason": _diagnose_unmatched(
+                    conn, "VENMO CASHOUT", "credit", r["transaction_date"],
+                    r["amount"], used_c, CASHOUT_WINDOW_DAYS),
+            })
             continue
         used_c.add(cid)
         superseded += 1
@@ -145,8 +200,19 @@ def build_venmo_enrichment_plan(conn):
     used_o, relabeled = set(), 0
     for r in bank_out:
         tid = _find_unused(conn, "VENMO OUTGOING", "debit",
-                           r["transaction_date"], r["amount"], used_o, 3)
+                           r["transaction_date"], r["amount"], used_o,
+                           OUTGOING_WINDOW_DAYS)
         if tid is None:
+            unmatched.append({
+                "kind": "unmatched", "key": f"unmatched:{r['venmo_id']}",
+                "target": "outgoing",
+                "date": _iso(r["transaction_date"]), "amount": r["amount"],
+                "to_name": r["to_name"], "note": r["note"],
+                "venmo_account": r["account_owner"],
+                "reason": _diagnose_unmatched(
+                    conn, "VENMO OUTGOING", "debit", r["transaction_date"],
+                    r["amount"], used_o, OUTGOING_WINDOW_DAYS),
+            })
             continue
         used_o.add(tid)
         relabeled += 1
@@ -157,6 +223,10 @@ def build_venmo_enrichment_plan(conn):
             "venmo_account": r["account_owner"],
         })
 
+    # Unmatched rows go last: they are informational (nothing to apply), but
+    # surfacing them is what keeps a missed bank match from going unnoticed.
+    rows.extend(unmatched)
+
     return {
         "totals": {
             "income_rows": len(income), "income_amount": round(inc_amt, 2),
@@ -164,6 +234,7 @@ def build_venmo_enrichment_plan(conn):
             "cashouts_superseded": superseded,
             "outgoing_relabeled": relabeled,
             "unmatched_transfers": len(transfers) - superseded,
+            "unmatched_outgoing": len(bank_out) - relabeled,
         },
         "rows": rows,
     }
@@ -242,7 +313,8 @@ def commit_venmo_enrichment(conn, keys):
     used_c, transfer_by = set(), {}
     for r in transfers:
         cid = _find_unused(conn, "VENMO CASHOUT", "credit",
-                           r["transaction_date"], r["amount"], used_c, 5)
+                           r["transaction_date"], r["amount"], used_c,
+                           CASHOUT_WINDOW_DAYS)
         if cid is None:
             continue
         used_c.add(cid)
@@ -251,7 +323,8 @@ def commit_venmo_enrichment(conn, keys):
     used_o, relabel_by = set(), {}
     for r in bank_out:
         tid = _find_unused(conn, "VENMO OUTGOING", "debit",
-                           r["transaction_date"], r["amount"], used_o, 3)
+                           r["transaction_date"], r["amount"], used_o,
+                           OUTGOING_WINDOW_DAYS)
         if tid is None:
             continue
         used_o.add(tid)
@@ -384,9 +457,13 @@ def main():
         plan = build_venmo_enrichment_plan(conn)
         print("Totals:", plan["totals"])
         for r in plan["rows"]:
-            print(" ", r["kind"], r["key"], r.get("amount"))
+            if r["kind"] == "unmatched":
+                print(" ", r["kind"], r["key"], r.get("amount"), "--", r["reason"])
+            else:
+                print(" ", r["kind"], r["key"], r.get("amount"))
         if args.commit_all:
-            res = commit_venmo_enrichment(conn, [r["key"] for r in plan["rows"]])
+            actionable = [r["key"] for r in plan["rows"] if r["kind"] != "unmatched"]
+            res = commit_venmo_enrichment(conn, actionable)
             print("Committed:", res)
     finally:
         conn.close()
