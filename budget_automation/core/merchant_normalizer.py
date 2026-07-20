@@ -79,6 +79,20 @@ MERCHANT_ALIASES = {
     r'NORTHWESTERN\s+MU': 'NORTHWESTERN',
 }
 
+# Chase ACH-detail description format, e.g.
+#   "ORIG CO NAME:VENMO CO ENTRY DESCR:CASHOUT SEC:PPD ORIG ID:5264681992"
+#   "ORIG CO NAME:LIPA CO ENTRY DESCR:ONLINE PAY SEC:WEB IND ID:0.. ORIG ID:.."
+# The originator is buried mid-string, so the anchored INTERNAL_PATTERNS never
+# fire and the raw description leaks through as the merchant name. Capture the
+# company name and entry description so we can normalize to the real merchant.
+ACH_ORIG_PATTERN = re.compile(
+    r'ORIG CO NAME:\s*(?P<name>.+?)\s+CO ENTRY DESCR:\s*(?P<descr>.+?)'
+    r'(?:\s+SEC:|\s+IND ID:|\s+ORIG ID:|$)'
+)
+
+# Suffixes to strip from an extracted ACH originator name.
+_COMPANY_SUFFIXES = (' INC', ' LLC', ' LTD', ' CORP', ' CO')
+
 def normalize_merchant(raw_description: str) -> Tuple[str, Optional[str]]:
     """
     Normalize a raw bank description into a clean merchant name.
@@ -113,6 +127,30 @@ def normalize_merchant(raw_description: str) -> Tuple[str, Optional[str]]:
             merchant_detail = re.sub(r'\s+', ' ', merchant_detail).strip()
             return replacement, merchant_detail
     
+    # Step 1b: Chase ACH-detail format ("ORIG CO NAME:... CO ENTRY DESCR:...").
+    # The anchored INTERNAL_PATTERNS below can't see the mid-string originator,
+    # so pull it out here. For Venmo, the entry description distinguishes a
+    # cashout (credit landing in the bank) from an outgoing payment — both must
+    # normalize to the canonical names so Venmo enrichment can match them.
+    ach = ACH_ORIG_PATTERN.search(text)
+    if ach:
+        originator = ach.group("name").strip()
+        entry_descr = ach.group("descr").strip()
+        if originator.startswith("VENMO"):
+            if "CASHOUT" in entry_descr:
+                return "VENMO CASHOUT", None
+            if "PAYMENT" in entry_descr:
+                return "VENMO OUTGOING", None
+            return "VENMO", None
+        # General ACH biller: use the company name (minus corporate suffixes).
+        merchant = originator
+        for suffix in _COMPANY_SUFFIXES:
+            if merchant.endswith(suffix):
+                merchant = merchant[: -len(suffix)].strip()
+                break
+        if len(merchant) >= 2:
+            return merchant, None
+
     # Step 2: Check for internal transaction patterns
     for pattern, replacement in INTERNAL_PATTERNS.items():
         match = re.match(pattern, text)
@@ -215,6 +253,12 @@ def test_normalization():
         # Insurance / ACH billers with trailing metadata
         ("NORTHWESTERN", "NORTHWESTERN", None),
         ("NORTHWESTERN MU  ISA PYMENT                 PPD ID: 9000596067", "NORTHWESTERN", None),
+
+        # Chase ACH-detail format ("ORIG CO NAME:... CO ENTRY DESCR:...")
+        ("ORIG CO NAME:VENMO CO ENTRY DESCR:CASHOUT SEC:PPD ORIG ID:5264681992", "VENMO CASHOUT", None),
+        ("ORIG CO NAME:VENMO CO ENTRY DESCR:PAYMENT SEC:PPD ORIG ID:5264681992", "VENMO OUTGOING", None),
+        ("ORIG CO NAME:LIPA CO ENTRY DESCR:ONLINE PAY SEC:WEB IND ID:0583802735 ORIG ID:1563585001", "LIPA", None),
+        ("ORIG CO NAME:OLLIE PETS INC CO ENTRY DESCR:G76KGZU75A SEC:PPD ORIG ID:9186939000", "OLLIE PETS", None),
     ]
     
     print("Testing merchant normalization...")
