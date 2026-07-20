@@ -848,6 +848,17 @@ body {
   text-decoration: none;
 }
 
+.recon-warning {
+  background: #fff8e1;
+  border: 1px solid #f0e0a0;
+  color: #6b5300;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin: 12px 0 16px;
+}
+
 .import-summary {
   display: flex;
   align-items: center;

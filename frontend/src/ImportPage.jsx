@@ -672,6 +672,19 @@ function VenmoImport({ lastDates, onImported }) {
             </button>
           </div>
 
+          {plan.totals.reconciliation_warning && (
+            <div className="recon-warning">
+              ⚠️ Reconciliation off by{" "}
+              <b>{fmtCurrency(plan.totals.net_unreconciled)}</b>: this run
+              itemizes {fmtCurrency(plan.totals.income_amount)} income −{" "}
+              {fmtCurrency(plan.totals.expense_amount)} expense but only removes{" "}
+              {fmtCurrency(plan.totals.cashouts_superseded_amount)} in cashouts.
+              A Venmo cashout is likely still in your budget and will
+              double-count this income. Check the unmatched rows below, or stage
+              the missing Standard Transfer and re-preview before applying.
+            </div>
+          )}
+
           {plan.rows.length === 0 ? (
             <div className="empty">
               No unenriched Venmo matches found. Stage a statement CSV first, or

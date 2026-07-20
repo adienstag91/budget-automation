@@ -34,6 +34,13 @@ VENMO_BALANCE = "Venmo balance"
 CASHOUT_WINDOW_DAYS = 5
 OUTGOING_WINDOW_DAYS = 5
 
+# Balance identity: sum(income) - sum(expense) - sum(superseded cashouts) equals
+# the Venmo balance left over (the residual). A residual materially above this
+# tolerance means itemized income/expense were created without the matching
+# cashout being removed — i.e. a cashout is probably still double-counting in
+# the budget. Small residuals are just money genuinely sitting in Venmo.
+RECON_TOLERANCE = 1.00
+
 
 def _iso(d):
     """Date/datetime -> ISO string (JSON-safe)."""
@@ -173,7 +180,7 @@ def build_venmo_enrichment_plan(conn):
 
     unmatched = []
 
-    used_c, superseded = set(), 0
+    used_c, superseded, superseded_amt = set(), 0, 0.0
     for r in transfers:
         cid = _find_unused(conn, "VENMO CASHOUT", "credit",
                            r["transaction_date"], r["amount"], used_c,
@@ -191,6 +198,7 @@ def build_venmo_enrichment_plan(conn):
             continue
         used_c.add(cid)
         superseded += 1
+        superseded_amt += r["amount"]
         rows.append({
             "kind": "supersede", "key": f"supersede:{cid}",
             "date": _iso(r["transaction_date"]), "amount": r["amount"],
@@ -227,14 +235,22 @@ def build_venmo_enrichment_plan(conn):
     # surfacing them is what keeps a missed bank match from going unnoticed.
     rows.extend(unmatched)
 
+    # Reconciliation: income - expense should net against the cashouts removed;
+    # a residual well above tolerance means a cashout wasn't superseded and is
+    # likely still double-counting the income in the budget.
+    net_unreconciled = round(inc_amt - exp_amt - superseded_amt, 2)
+
     return {
         "totals": {
             "income_rows": len(income), "income_amount": round(inc_amt, 2),
             "expense_rows": len(expense), "expense_amount": round(exp_amt, 2),
             "cashouts_superseded": superseded,
+            "cashouts_superseded_amount": round(superseded_amt, 2),
             "outgoing_relabeled": relabeled,
             "unmatched_transfers": len(transfers) - superseded,
             "unmatched_outgoing": len(bank_out) - relabeled,
+            "net_unreconciled": net_unreconciled,
+            "reconciliation_warning": net_unreconciled > RECON_TOLERANCE,
         },
         "rows": rows,
     }

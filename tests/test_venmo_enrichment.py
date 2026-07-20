@@ -98,6 +98,48 @@ def test_plan_matched_outgoing_has_no_unmatched(monkeypatch):
     assert plan["rows"][0]["key"] == "relabel:42"
 
 
+def test_reconciliation_warns_when_cashout_not_superseded(monkeypatch):
+    """Income itemized but its cashout not removed (e.g. mis-normalized cashout)
+    -> net_unreconciled equals the stranded income and the warning trips. This
+    is exactly the Craig Cinder double-count."""
+    income = _staging_row(venmo_id="a", direction="credit",
+                          destination=ve.VENMO_BALANCE, funding_source="",
+                          amount=297.0)
+    transfer = _staging_row(venmo_id="b", transaction_type="Standard Transfer",
+                            amount=297.0)
+    monkeypatch.setattr(ve, "_get_unenriched_staging",
+                        lambda conn: [income, transfer])
+    monkeypatch.setattr(ve, "_find_unused", lambda *a, **k: None)
+    monkeypatch.setattr(ve, "_diagnose_unmatched", lambda *a, **k: "no match")
+
+    totals = ve.build_venmo_enrichment_plan(conn=None)["totals"]
+
+    assert totals["income_amount"] == 297.0
+    assert totals["cashouts_superseded_amount"] == 0.0
+    assert totals["net_unreconciled"] == 297.0
+    assert totals["reconciliation_warning"] is True
+
+
+def test_reconciliation_clean_when_cashout_superseded(monkeypatch):
+    """Income offset by a superseded cashout of the same amount -> net ~0, no
+    warning."""
+    income = _staging_row(venmo_id="a", direction="credit",
+                          destination=ve.VENMO_BALANCE, funding_source="",
+                          amount=297.0)
+    transfer = _staging_row(venmo_id="b", transaction_type="Standard Transfer",
+                            amount=297.0)
+    monkeypatch.setattr(ve, "_get_unenriched_staging",
+                        lambda conn: [income, transfer])
+    monkeypatch.setattr(ve, "_find_unused", lambda *a, **k: 99)
+
+    totals = ve.build_venmo_enrichment_plan(conn=None)["totals"]
+
+    assert totals["cashouts_superseded"] == 1
+    assert totals["cashouts_superseded_amount"] == 297.0
+    assert totals["net_unreconciled"] == 0.0
+    assert totals["reconciliation_warning"] is False
+
+
 def test_outgoing_window_matches_cashout_window():
     """Posting lag over a holiday weekend (e.g. MLK day) can put the bank debit
     4+ days after the Venmo payment date; the old ±3-day outgoing window
