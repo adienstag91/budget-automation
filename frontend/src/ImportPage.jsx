@@ -191,6 +191,11 @@ function ChaseImport({ lastDates, onImported }) {
   return (
     <div>
       <ChaseLastDates lastDates={lastDates} />
+      <p className="import-help">
+        Chase is a one-step import: <b>Preview</b> the parsed rows (categorized
+        by rules, optionally LLM), then <b>Import</b> to save. Uncheck any row to
+        skip it. Nothing is written until you click Import.
+      </p>
       <div className="import-controls">
         <input
           type="file"
@@ -387,29 +392,49 @@ function AmazonImport({ lastDates }) {
   return (
     <div>
       <AmazonLastDates lastDates={lastDates} />
-      <div className="import-controls">
-        <input
-          type="file"
-          accept=".csv,.CSV"
-          onChange={(e) => {
-            setFile(e.target.files[0] || null);
-            setStageResult(null);
-          }}
-        />
-        <button className="import-btn" disabled={!file || busy} onClick={runStage}>
-          Stage orders
-        </button>
-        <label className="import-toggle">
-          <input
-            type="checkbox"
-            checked={useLlm}
-            onChange={(e) => setUseLlm(e.target.checked)}
-          />
-          Use LLM for product categories
-        </label>
-        <button className="import-btn" disabled={busy} onClick={runPreview}>
-          Preview enrichment
-        </button>
+      <p className="import-help">
+        <b>Step 1 — Import</b> loads your Amazon order history into staging.{" "}
+        <b>Step 2 — Enrich</b> previews how orders match your card charges, then
+        applies the changes. Nothing hits your budget until you click{" "}
+        <b>Enrich</b>.
+      </p>
+      <div className="import-steps">
+        <div className="import-step">
+          <div className="import-step-label">Step 1 — Import</div>
+          <div className="import-controls">
+            <input
+              type="file"
+              accept=".csv,.CSV"
+              onChange={(e) => {
+                setFile(e.target.files[0] || null);
+                setStageResult(null);
+              }}
+            />
+            <button
+              className="import-btn"
+              disabled={!file || busy}
+              onClick={runStage}
+            >
+              Import CSV
+            </button>
+          </div>
+        </div>
+        <div className="import-step">
+          <div className="import-step-label">Step 2 — Enrich</div>
+          <div className="import-controls">
+            <label className="import-toggle">
+              <input
+                type="checkbox"
+                checked={useLlm}
+                onChange={(e) => setUseLlm(e.target.checked)}
+              />
+              Use LLM for product categories
+            </label>
+            <button className="import-btn" disabled={busy} onClick={runPreview}>
+              Preview enrichment
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && <div className="error">{error}</div>}
@@ -596,21 +621,41 @@ function VenmoImport({ lastDates, onImported }) {
   return (
     <div>
       <VenmoLastDates lastDates={lastDates} />
-      <div className="import-controls">
-        <input
-          type="file"
-          accept=".csv,.CSV"
-          onChange={(e) => {
-            setFile(e.target.files[0] || null);
-            setStageResult(null);
-          }}
-        />
-        <button className="import-btn" disabled={!file || busy} onClick={runStage}>
-          Stage transactions
-        </button>
-        <button className="import-btn" disabled={busy} onClick={runPreview}>
-          Preview enrichment
-        </button>
+      <p className="import-help">
+        <b>Step 1 — Import</b> loads your Venmo statement into staging.{" "}
+        <b>Step 2 — Enrich</b> previews how those rows match your bank
+        transactions, then applies the changes. Nothing hits your budget until
+        you click <b>Apply</b>.
+      </p>
+      <div className="import-steps">
+        <div className="import-step">
+          <div className="import-step-label">Step 1 — Import</div>
+          <div className="import-controls">
+            <input
+              type="file"
+              accept=".csv,.CSV"
+              onChange={(e) => {
+                setFile(e.target.files[0] || null);
+                setStageResult(null);
+              }}
+            />
+            <button
+              className="import-btn"
+              disabled={!file || busy}
+              onClick={runStage}
+            >
+              Import CSV
+            </button>
+          </div>
+        </div>
+        <div className="import-step">
+          <div className="import-step-label">Step 2 — Enrich</div>
+          <div className="import-controls">
+            <button className="import-btn" disabled={busy} onClick={runPreview}>
+              Preview enrichment
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && <div className="error">{error}</div>}
@@ -671,6 +716,19 @@ function VenmoImport({ lastDates, onImported }) {
               Apply {selected.size} enrichment{selected.size === 1 ? "" : "s"}
             </button>
           </div>
+
+          {plan.totals.reconciliation_warning && (
+            <div className="recon-warning">
+              ⚠️ Reconciliation off by{" "}
+              <b>{fmtCurrency(plan.totals.net_unreconciled)}</b>: this run
+              itemizes {fmtCurrency(plan.totals.income_amount)} income −{" "}
+              {fmtCurrency(plan.totals.expense_amount)} expense but only removes{" "}
+              {fmtCurrency(plan.totals.cashouts_superseded_amount)} in cashouts.
+              A Venmo cashout is likely still in your budget and will
+              double-count this income. Check the unmatched rows below, or stage
+              the missing Standard Transfer and re-preview before applying.
+            </div>
+          )}
 
           {plan.rows.length === 0 ? (
             <div className="empty">
