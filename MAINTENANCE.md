@@ -49,8 +49,12 @@ Changes go live at the prod URL after the deploy finishes. The
 "Failed to stream build logs" message is cosmetic — the build runs server-side;
 check `railway logs` / the dashboard.
 
-There is **no auto-deploy** for Railway right now — deploys are manual via
-`railway up`. (`.github/workflows/deploy.yml` targets Fly.io and is unused.)
+**Auto-deploy:** `.github/workflows/deploy.yml` deploys prod to Railway on every
+push to `main`. It ships **code only** (same as `railway up`) — schema changes
+still need a separate migration against prod Postgres, applied *before* the
+dependent code merges (see gotcha #2). The manual `railway up` above still works
+for out-of-band deploys. Requires a `RAILWAY_TOKEN` repo secret (Railway →
+budget-prod → Settings → Tokens); until it's set the workflow skips cleanly.
 
 ## Three things to watch out for
 
@@ -154,8 +158,9 @@ the only endpoint exempt from the password gate.)
   `amazon_products_analysis.csv` return 404 (verified). Repo is safe to publish.
 - [ ] **Make the repo public** — now unblocked; flip it in GitHub → Settings →
   General → Danger Zone when ready. (Publishes code only; prod stays private.)
-- [ ] Optional: wire **Railway auto-deploy** (connect the GitHub repo) so pushes
-  redeploy automatically instead of manual `railway up`.
+- [x] **Railway auto-deploy wired** — `.github/workflows/deploy.yml` deploys
+  prod on push to `main` (code only). Set the `RAILWAY_TOKEN` repo secret to
+  activate; until then it skips cleanly.
 
 ## See also
 - `DEPLOY.md` — full setup runbook, history scrub, read-only role, data migration.

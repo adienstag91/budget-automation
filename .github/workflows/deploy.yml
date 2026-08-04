@@ -1,18 +1,23 @@
-# Auto-deploy the PUBLIC DEMO app to Fly.io on every push to main.
+# Auto-deploy PRODUCTION to Railway (budget-prod) on every push to main.
 #
-# This builds the image from Dockerfile and deploys the app named in fly.toml
-# (budget-automation-demo, APP_MODE=demo, synthetic data only).
+# Replaces the old Fly.io demo workflow (Fly is retired; prod + demo both run on
+# Railway). Ships CODE ONLY — the container. Schema changes are NOT applied by a
+# deploy: a migration must be run against the prod Postgres separately, and it
+# must land BEFORE merging code that depends on it, or prod will 500 on the
+# mismatch (see MAINTENANCE.md → "Code vs. data vs. schema").
 #
-# PRODUCTION (real data) is deliberately NOT deployed here — keep that a manual
-# `flyctl deploy -c fly.prod.toml` (or a separate, gated workflow) so a push can
-# never disrupt the private app. See DEPLOY.md.
+# One-time setup to turn this on:
+#   1. Railway → budget-prod project → Settings → Tokens → create a token scoped
+#      to the production environment.
+#   2. GitHub → repo Settings → Secrets and variables → Actions → New repository
+#      secret named RAILWAY_TOKEN with that value.
+#   (Optional) if the service isn't named "budget-prod", add an Actions
+#   *variable* RAILWAY_SERVICE with the real service name.
 #
-# Setup (one-time): create a Fly deploy token and add it as a repo secret named
-# FLY_API_TOKEN:
-#     flyctl tokens create deploy -a budget-automation-demo
-#     # GitHub → repo Settings → Secrets and variables → Actions → New secret
+# Until RAILWAY_TOKEN exists the job skips cleanly (green), so merges are never
+# blocked by a missing secret.
 
-name: Deploy demo to Fly.io
+name: Deploy prod to Railway
 
 on:
   push:
@@ -20,17 +25,36 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: fly-deploy-demo
-  cancel-in-progress: true
+  group: railway-deploy-prod
+  cancel-in-progress: false # never interrupt a prod deploy mid-flight
 
 jobs:
   deploy:
-    name: Deploy demo
+    name: Deploy prod
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy
-        run: flyctl deploy --remote-only
+      - name: Check RAILWAY_TOKEN is configured
+        id: guard
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::notice::RAILWAY_TOKEN secret not set — skipping deploy. Add it in repo Settings → Secrets and variables → Actions to enable auto-deploy."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.guard.outputs.go == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        if: steps.guard.outputs.go == 'true'
+        run: npm i -g @railway/cli
+
+      - name: Deploy to Railway
+        if: steps.guard.outputs.go == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service "${{ vars.RAILWAY_SERVICE || 'budget-prod' }}" --ci
