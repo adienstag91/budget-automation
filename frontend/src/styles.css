@@ -976,6 +976,7 @@ body {
 .src-badge,
 .dup-badge,
 .review-badge,
+.maybe-dup-badge,
 .new-badge {
   display: inline-block;
   font-size: 11px;
@@ -983,6 +984,15 @@ body {
   padding: 1px 7px;
   border-radius: 10px;
   white-space: nowrap;
+}
+
+/* Possible (not exact) duplicate — the bank reworded the same charge. Orange to
+   read as "caution, review" between the grey exact-dup and green new badges. */
+.maybe-dup-badge {
+  background: #fff1e6;
+  color: #9a4a00;
+  border: 1px solid #f3d3b5;
+  cursor: help;
 }
 
 .new-badge {

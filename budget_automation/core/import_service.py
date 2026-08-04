@@ -173,6 +173,90 @@ def existing_content_keys(conn, account_ids: List[int]) -> Dict[str, int]:
     return counts
 
 
+def weak_key(txn_date, amount, account_id, direction) -> str:
+    """
+    A looser dedup key than content_key: date + amount + account + direction,
+    IGNORING the description. Two rows share a weak key when they're the same
+    money movement on the same day/account/direction even if the bank worded the
+    description differently across exports. Used to catch re-import duplicates
+    that slip past the description-sensitive hash — e.g. Chase re-exporting
+    "ORIG CO NAME:LIPA ..." as "LIPA ONLINE PAY WEB ID: ...".
+    """
+    amt = f"{float(amount):.2f}"
+    return f"{txn_date}|{amt}|{account_id}|{direction}"
+
+
+def existing_weak_keys(conn, account_ids: List[int]) -> Dict[str, int]:
+    """weak_key -> count of existing transactions on the given accounts."""
+    if not account_ids:
+        return {}
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT txn_date, amount, account_id, direction, COUNT(*)
+        FROM transactions
+        WHERE account_id = ANY(%s)
+        GROUP BY txn_date, amount, account_id, direction
+        """,
+        (list(account_ids),),
+    )
+    counts: Dict[str, int] = {}
+    for txn_date, amount, account_id, direction, cnt in cursor.fetchall():
+        counts[weak_key(txn_date, amount, account_id, direction)] = cnt
+    cursor.close()
+    return counts
+
+
+def flag_duplicates(txn_dicts, stored_hashes, db_content_counts, db_weak_counts):
+    """
+    Classify each parsed row as an exact duplicate, a *possible* duplicate, or
+    new. Pure function over precomputed DB maps, so it's unit-testable with no DB.
+
+    - **exact** (`is_duplicate`): hash already stored, or the DB already holds at
+      least as many rows with this exact content key as this row's occurrence
+      (handles identical same-day repeats and old-style hashes).
+    - **possible** (`possible_duplicate`): NOT an exact match, but an existing
+      transaction shares this row's weak key (date + amount + account +
+      direction) and wasn't already claimed by an exact match — i.e. the same
+      charge the bank reworded across exports (LIPA/OLLIE/Venmo). Surfaced, not
+      auto-dropped: legitimate same-day repeats keep identical descriptions so
+      they match exactly and never reach this branch; the false-positive case
+      (two genuinely different charges sharing date/amount/account/direction) is
+      rare and recoverable — the user just re-checks the row.
+
+    Returns a list (input order) of {"is_duplicate": bool,
+    "possible_duplicate": bool}.
+    """
+    seen_content: Dict[str, int] = {}
+    weak_consumed: Dict[str, int] = {}
+    out = []
+    for t in txn_dicts:
+        ck = content_key(
+            t["txn_date"], t["description_raw"], t["amount"], t["account_id"]
+        )
+        seen_content[ck] = seen_content.get(ck, 0) + 1
+        occ = seen_content[ck]
+
+        is_dup = (
+            t["source_row_hash"] in stored_hashes
+            or db_content_counts.get(ck, 0) >= occ
+        )
+
+        wk = weak_key(t["txn_date"], t["amount"], t["account_id"], t["direction"])
+        used = weak_consumed.get(wk, 0)
+        possible = False
+        if not is_dup and used < db_weak_counts.get(wk, 0):
+            # An existing row shares this weak key but no exact match claimed it,
+            # so it's very likely the same charge reworded by the bank.
+            possible = True
+        # Both exact and possible dups consume a weak slot, so exact matches are
+        # never re-counted as possibles and vice-versa.
+        weak_consumed[wk] = used + 1
+
+        out.append({"is_duplicate": is_dup, "possible_duplicate": possible})
+    return out
+
+
 def insert_transactions(conn, transactions: List[Dict]) -> Tuple[int, int, int]:
     """
     Insert transaction dicts into the DB, deduplicating on the UNIQUE
