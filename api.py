@@ -2032,7 +2032,8 @@ async def import_preview(
         categorize_parsed,
         existing_hashes_for,
         existing_content_keys,
-        content_key,
+        existing_weak_keys,
+        flag_duplicates,
     )
 
     raw = await file.read()
@@ -2065,31 +2066,30 @@ async def import_preview(
         conn = get_db_connection()
         txn_dicts, stats = categorize_parsed(conn, parsed, enable_llm=use_llm)
 
-        # Duplicate detection robust to the dedup-hash scheme change: a row is a
-        # duplicate if its new-style hash is already stored, OR if the DB already
-        # holds at least as many rows with the same content key as this row's
-        # occurrence index (handles rows inserted under the old hash scheme).
+        # Duplicate detection, in two tiers (see import_service.flag_duplicates):
+        #   - exact (is_duplicate): hash stored, or the DB already holds >= this
+        #     row's occurrence of the same content key (robust to the old hash
+        #     scheme and to identical same-day repeats).
+        #   - possible (possible_duplicate): same date+amount+account+direction as
+        #     an existing txn but a different description — the bank reworded the
+        #     same charge across exports (LIPA/OLLIE/Venmo). Default-unchecked in
+        #     the UI so it isn't silently re-imported.
         new_hashes = [t["source_row_hash"] for t in txn_dicts]
         stored = existing_hashes_for(conn, new_hashes)
         account_ids = list({t["account_id"] for t in txn_dicts})
         db_key_counts = existing_content_keys(conn, account_ids)
+        db_weak_counts = existing_weak_keys(conn, account_ids)
 
-        seen_occurrence: dict = {}
+        flags = flag_duplicates(txn_dicts, stored, db_key_counts, db_weak_counts)
+
         rows = []
         dup_count = 0
-        for t in txn_dicts:
-            key = content_key(
-                t["txn_date"], t["description_raw"], t["amount"], t["account_id"]
-            )
-            seen_occurrence[key] = seen_occurrence.get(key, 0) + 1
-            occ = seen_occurrence[key]
-
-            is_dup = (
-                t["source_row_hash"] in stored
-                or db_key_counts.get(key, 0) >= occ
-            )
-            if is_dup:
+        possible_count = 0
+        for t, f in zip(txn_dicts, flags):
+            if f["is_duplicate"]:
                 dup_count += 1
+            elif f["possible_duplicate"]:
+                possible_count += 1
 
             rows.append({
                 "source_row_hash": t["source_row_hash"],
@@ -2108,7 +2108,8 @@ async def import_preview(
                     if t["category_confidence"] is not None else None
                 ),
                 "needs_review": t["needs_review"],
-                "is_duplicate": is_dup,
+                "is_duplicate": f["is_duplicate"],
+                "possible_duplicate": f["possible_duplicate"],
                 # carried for commit (not shown), so commit need not re-parse/LLM
                 "_insert": {
                     "account_id": t["account_id"],
@@ -2127,8 +2128,9 @@ async def import_preview(
             "account_id": detected_account,
             "totals": {
                 "parsed": len(rows),
-                "new": len(rows) - dup_count,
+                "new": len(rows) - dup_count - possible_count,
                 "duplicates": dup_count,
+                "possible_duplicates": possible_count,
                 "rule_matched": stats.get("rule_match", 0),
                 "llm_matched": stats.get("llm_suggest", 0),
                 "needs_review": stats.get("needs_review", 0),

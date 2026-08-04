@@ -149,10 +149,12 @@ function ChaseImport({ lastDates, onImported }) {
     importPreview(file, { useLlm })
       .then((data) => {
         setPreview(data);
-        // Default: exclude rows already in the DB (duplicates).
+        // Default: exclude exact duplicates AND possible duplicates (same
+        // date/amount/account/direction as an existing txn, reworded by the
+        // bank). The user can re-check a possible-dup if it's genuinely new.
         const dupIdx = new Set(
           data.rows
-            .map((r, i) => (r.is_duplicate ? i : -1))
+            .map((r, i) => (r.is_duplicate || r.possible_duplicate ? i : -1))
             .filter((i) => i >= 0)
         );
         setExcluded(dupIdx);
@@ -245,6 +247,13 @@ function ChaseImport({ lastDates, onImported }) {
             <span className="stat">
               dup <b>{preview.totals.duplicates}</b>
             </span>
+            {preview.totals.possible_duplicates > 0 && (
+              <span className="stat">
+                <span className="maybe-dup-badge">
+                  possible dup <b>{preview.totals.possible_duplicates}</b>
+                </span>
+              </span>
+            )}
             <span className="stat">
               rules <b>{preview.totals.rule_matched}</b>
             </span>
@@ -304,6 +313,13 @@ function ChaseImport({ lastDates, onImported }) {
                   <td>
                     {r.is_duplicate ? (
                       <span className="dup-badge">duplicate</span>
+                    ) : r.possible_duplicate ? (
+                      <span
+                        className="maybe-dup-badge"
+                        title="Same date, amount, account & direction as an existing transaction, but a different description — likely the same charge the bank reworded. Unchecked by default; re-check it if it's genuinely a separate charge."
+                      >
+                        possible dup
+                      </span>
                     ) : r.needs_review ? (
                       <span className="review-badge">review</span>
                     ) : (
