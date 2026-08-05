@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { fetchTransactions, fmtCurrency, fmtMonthLabel } from "./api.js";
+import {
+  fetchTransactions,
+  fmtCurrency,
+  fmtMonthLabel,
+  pivotTxnSign,
+  isPivotInflow,
+} from "./api.js";
 import RecategorizeControl from "./components/RecategorizeControl.jsx";
 import TagEditor from "./components/TagEditor.jsx";
 import DateEditControl from "./components/DateEditControl.jsx";
 import ExcludeControl from "./components/ExcludeControl.jsx";
 
-export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
+export default function Drilldown({ selection, view, taxonomy, onClose, onChanged }) {
   const [txns, setTxns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,11 +19,13 @@ export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
   function load() {
     setLoading(true);
     setError(null);
+    // No direction filter: pivot cells are NET (both directions), so the
+    // drilldown must include credits/inflows (refunds, income) too — otherwise
+    // positive cash flows are invisible and the total won't match the cell.
     fetchTransactions({
       category: selection.category,
       subcategory: selection.subcategory,
       month: selection.month, // when set, scope to that month only
-      direction: "debit", // pivot is debit-only; preserve prior behavior
     })
       .then((data) => setTxns(data.transactions || []))
       .catch((err) => setError(err.message))
@@ -29,7 +37,13 @@ export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selection.category, selection.subcategory, selection.month]);
 
-  const total = txns.reduce((s, t) => s + t.amount, 0);
+  // Net total, signed to match the pivot cell that was clicked (so this total
+  // equals the number in the grid). Inflows render green.
+  const total = txns.reduce(
+    (s, t) => s + pivotTxnSign(view, t.direction) * t.amount,
+    0
+  );
+  const totalInflow = isPivotInflow(view, total);
 
   return (
     <div className="drilldown">
@@ -43,7 +57,10 @@ export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
           {" · "}
           {selection.month ? fmtMonthLabel(selection.month) : "All in range"}
           {" · "}
-          {txns.length} charges · {fmtCurrency(total)}
+          {txns.length} charges ·{" "}
+          <span className={totalInflow ? "inflow" : undefined}>
+            {fmtCurrency(totalInflow ? Math.abs(total) : total)}
+          </span>
         </div>
       </div>
       <div className="drilldown-list">
@@ -61,7 +78,14 @@ export default function Drilldown({ selection, taxonomy, onClose, onChanged }) {
                   {t.merchant_norm}
                   {t.merchant_detail ? ` · ${t.merchant_detail}` : ""}
                 </span>
-                <span className="amount">{fmtCurrency(t.amount)}</span>
+                <span
+                  className={
+                    "amount" + (t.direction === "credit" ? " inflow" : "")
+                  }
+                  title={t.direction === "credit" ? "Money in" : "Money out"}
+                >
+                  {fmtCurrency(t.amount)}
+                </span>
               </div>
               <div className="meta">
                 <DateEditControl

@@ -400,6 +400,28 @@ export function deleteSubcategory({ category, subcategory }) {
   return sendJSON(`/api/taxonomy/subcategories`, "DELETE", { category, subcategory });
 }
 
+// Cash-flow sign helpers shared by the pivot grid and the drilldown.
+//
+// Pivot cells are NET values whose sign convention depends on the view:
+//   - income: inflows positive (credit - debit)
+//   - spending / everything: outflows positive (debit - credit)
+// An "inflow" is money coming in (a positive cash flow): income, a refund,
+// or any net credit. We render inflows green, as a positive magnitude, so a
+// positive cash flow reads as a good thing rather than a confusing negative.
+
+// Does a NET pivot value represent an inflow (money in) for this view?
+export function isPivotInflow(view, value) {
+  if (!value) return false;
+  return view === "income" ? value > 0 : value < 0;
+}
+
+// Sign a single transaction contributes to its pivot cell, so a drilldown's
+// net total matches the cell that was clicked.
+export function pivotTxnSign(view, direction) {
+  if (view === "income") return direction === "credit" ? 1 : -1;
+  return direction === "debit" ? 1 : -1;
+}
+
 export function fmtMonthLabel(ym) {
   // "2025-11" -> "Nov 2025"
   const [y, m] = ym.split("-");

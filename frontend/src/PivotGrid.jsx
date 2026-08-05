@@ -1,36 +1,51 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { fmtMonthLabel, fmtCurrency } from "./api.js";
+import { fmtMonthLabel, fmtCurrency, isPivotInflow } from "./api.js";
 
 // A self-contained pivot table with manual expand/collapse.
 // Deliberately does NOT use AG Grid tree/row-grouping (those are Enterprise
 // or otherwise unreliable in the Community build). This is a plain table we
 // fully control: category rows toggle their subcategory rows open/closed.
 
-function Amount({ value }) {
+// Render a NET pivot value. Inflows (money in — income, refunds, net credits)
+// are shown green as a positive magnitude so a positive cash flow reads as a
+// good thing; outflows keep the default styling and sign.
+function fmtCell(value, view) {
+  const inflow = isPivotInflow(view, value);
+  return {
+    text: fmtCurrency(inflow ? Math.abs(Number(value)) : Number(value)),
+    inflow,
+  };
+}
+
+function Amount({ value, view }) {
   const zero = !value;
+  const { text, inflow } = fmtCell(value, view);
   return (
-    <td className={"cell-amount" + (zero ? " zero" : "")}>
-      {zero ? "" : fmtCurrency(Number(value))}
+    <td className={"cell-amount" + (zero ? " zero" : inflow ? " inflow" : "")}>
+      {zero ? "" : text}
     </td>
   );
 }
 
 // A clickable month amount cell on a subcategory row.
 // Clicking drills into that specific month so it sums to this cell.
-function ClickableAmount({ value, onClick }) {
+function ClickableAmount({ value, view, onClick }) {
   const zero = !value;
+  const { text, inflow } = fmtCell(value, view);
   return (
     <td
-      className={"cell-amount clickable" + (zero ? " zero" : "")}
+      className={
+        "cell-amount clickable" + (zero ? " zero" : inflow ? " inflow" : "")
+      }
       onClick={zero ? undefined : onClick}
       title={zero ? "" : "View this month's charges"}
     >
-      {zero ? "" : fmtCurrency(Number(value))}
+      {zero ? "" : text}
     </td>
   );
 }
 
-export default function PivotGrid({ pivot, onDrilldown, selectedKey }) {
+export default function PivotGrid({ pivot, onDrilldown, selectedKey, view }) {
   const months = pivot.months;
 
   // Track which categories are expanded. Default: all collapsed.
@@ -93,11 +108,20 @@ export default function PivotGrid({ pivot, onDrilldown, selectedKey }) {
                     {cat.category}
                   </td>
                   {months.map((m) => (
-                    <Amount key={m} value={cat.monthly_data[m]} />
+                    <Amount key={m} value={cat.monthly_data[m]} view={view} />
                   ))}
-                  <td className="cell-amount col-total">
-                    {fmtCurrency(cat.total)}
-                  </td>
+                  {(() => {
+                    const { text, inflow } = fmtCell(cat.total, view);
+                    return (
+                      <td
+                        className={
+                          "cell-amount col-total" + (inflow ? " inflow" : "")
+                        }
+                      >
+                        {text}
+                      </td>
+                    );
+                  })()}
                 </tr>
 
                 {/* Subcategory rows (only when expanded). Hide subcategories
@@ -133,6 +157,7 @@ export default function PivotGrid({ pivot, onDrilldown, selectedKey }) {
                             <ClickableAmount
                               key={m}
                               value={sub.monthly_data[m]}
+                              view={view}
                               onClick={() =>
                                 onDrilldown({
                                   category: cat.category,
@@ -142,18 +167,26 @@ export default function PivotGrid({ pivot, onDrilldown, selectedKey }) {
                               }
                             />
                           ))}
-                          <td
-                            className="cell-amount col-total clickable"
-                            title="View all charges in this timeframe"
-                            onClick={() =>
-                              onDrilldown({
-                                category: cat.category,
-                                subcategory: sub.subcategory,
-                              })
-                            }
-                          >
-                            {fmtCurrency(sub.total)}
-                          </td>
+                          {(() => {
+                            const { text, inflow } = fmtCell(sub.total, view);
+                            return (
+                              <td
+                                className={
+                                  "cell-amount col-total clickable" +
+                                  (inflow ? " inflow" : "")
+                                }
+                                title="View all charges in this timeframe"
+                                onClick={() =>
+                                  onDrilldown({
+                                    category: cat.category,
+                                    subcategory: sub.subcategory,
+                                  })
+                                }
+                              >
+                                {text}
+                              </td>
+                            );
+                          })()}
                         </tr>
                       );
                     })}
@@ -164,12 +197,25 @@ export default function PivotGrid({ pivot, onDrilldown, selectedKey }) {
         <tfoot>
           <tr className="row-grandtotal">
             <td className="col-label sticky-left">GRAND TOTAL</td>
-            {months.map((m) => (
-              <td key={m} className="cell-amount">
-                {fmtCurrency(pivot.grand_totals[m] || 0)}
-              </td>
-            ))}
-            <td className="cell-amount col-total">{fmtCurrency(grandTotal)}</td>
+            {months.map((m) => {
+              const { text, inflow } = fmtCell(pivot.grand_totals[m] || 0, view);
+              return (
+                <td
+                  key={m}
+                  className={"cell-amount" + (inflow ? " inflow" : "")}
+                >
+                  {text}
+                </td>
+              );
+            })}
+            {(() => {
+              const { text, inflow } = fmtCell(grandTotal, view);
+              return (
+                <td className={"cell-amount col-total" + (inflow ? " inflow" : "")}>
+                  {text}
+                </td>
+              );
+            })()}
           </tr>
         </tfoot>
       </table>
