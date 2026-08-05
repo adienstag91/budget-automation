@@ -40,7 +40,7 @@ function resolveRange(range, custom) {
 export default function PivotPage() {
   const [range, setRange] = useState("last6");
   const [custom, setCustom] = useState({ start: "", end: "" });
-  const [view, setView] = useState("spending"); // spending | income | everything
+  const [view, setView] = useState("everything"); // spending | income | everything
   const [pivot, setPivot] = useState(null);
   const [taxonomy, setTaxonomy] = useState({});
   const [selection, setSelection] = useState(null);
