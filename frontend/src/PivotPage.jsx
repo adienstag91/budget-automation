@@ -155,6 +155,7 @@ export default function PivotPage() {
           {!loading && !error && pivot && (
             <PivotGrid
               pivot={pivot}
+              view={view}
               onDrilldown={setSelection}
               selectedKey={
                 selection
@@ -186,6 +187,7 @@ export default function PivotPage() {
         {selection && (
           <Drilldown
             selection={selection}
+            view={view}
             taxonomy={taxonomy}
             onClose={() => setSelection(null)}
             onChanged={loadPivot}

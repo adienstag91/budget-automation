@@ -287,6 +287,15 @@ body {
   color: #c2c6cf;
 }
 
+/* Inflows (positive cash flow: income, refunds, net credits) read as green —
+   a money-in amount is a good thing, not a scary negative. Shown as a positive
+   magnitude; green already carries the direction. */
+.cell-amount.inflow,
+.drilldown .amount.inflow,
+.drilldown-header .inflow {
+  color: #1e7e34;
+}
+
 .col-total {
   font-weight: 600;
   border-left: 1px solid var(--border);
