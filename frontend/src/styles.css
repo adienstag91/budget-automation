@@ -860,6 +860,16 @@ body {
   cursor: pointer;
 }
 
+.import-account-select {
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
 .import-btn {
   font-size: 13px;
   padding: 6px 14px;

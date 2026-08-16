@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   importPreview,
   importCommit,
+  listAccounts,
   amazonImport,
   amazonEnrichPreview,
   amazonEnrichCommit,
@@ -139,14 +140,26 @@ function ChaseImport({ lastDates, onImported }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [accountId, setAccountId] = useState("");
+
+  // Load the account list once so the user can say which card a CSV belongs to.
+  // Required: Chase reuses one credit-card CSV layout for every card, so without
+  // an explicit choice a personal-card export would silently land in whichever
+  // credit account the parser defaults to.
+  useEffect(() => {
+    listAccounts()
+      .then((data) => setAccounts(data.accounts || []))
+      .catch(() => {});
+  }, []);
 
   const runPreview = useCallback(() => {
-    if (!file) return;
+    if (!file || accountId === "") return;
     setBusy(true);
     setError(null);
     setResult(null);
     setPreview(null);
-    importPreview(file, { useLlm })
+    importPreview(file, { accountId: Number(accountId), useLlm })
       .then((data) => {
         setPreview(data);
         // Default: exclude exact duplicates AND possible duplicates (same
@@ -161,7 +174,7 @@ function ChaseImport({ lastDates, onImported }) {
       })
       .catch((e) => setError(e.message))
       .finally(() => setBusy(false));
-  }, [file, useLlm]);
+  }, [file, accountId, useLlm]);
 
   const toggleRow = (i) => {
     setExcluded((prev) => {
@@ -199,6 +212,22 @@ function ChaseImport({ lastDates, onImported }) {
         skip it. Nothing is written until you click Import.
       </p>
       <div className="import-controls">
+        <select
+          className="import-account-select"
+          value={accountId}
+          onChange={(e) => {
+            setAccountId(e.target.value);
+            setPreview(null);
+            setResult(null);
+          }}
+        >
+          <option value="">Select account…</option>
+          {accounts.map((a) => (
+            <option key={a.account_id} value={a.account_id}>
+              {a.account_name} ({a.account_type})
+            </option>
+          ))}
+        </select>
         <input
           type="file"
           accept=".csv,.CSV"
@@ -216,10 +245,21 @@ function ChaseImport({ lastDates, onImported }) {
           />
           Use LLM for unmatched (costs API credits)
         </label>
-        <button className="import-btn" disabled={!file || busy} onClick={runPreview}>
+        <button
+          className="import-btn"
+          disabled={!file || accountId === "" || busy}
+          onClick={runPreview}
+        >
           {busy && !result ? "Working…" : "Preview"}
         </button>
       </div>
+      {accountId === "" && (
+        <p className="import-help">
+          Pick which account this CSV belongs to before previewing — Chase uses
+          the same file layout for every card, so this is how each card's
+          transactions stay separate.
+        </p>
+      )}
 
       {error && <div className="error">{error}</div>}
 

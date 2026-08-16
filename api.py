@@ -2014,6 +2014,24 @@ def _valid_taxonomy_pairs(conn) -> set:
     return pairs
 
 
+@app.get("/api/accounts")
+def list_accounts():
+    """Active accounts, for the import account picker (and anywhere the UI needs
+    to let the user choose which account a CSV belongs to)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT account_id, account_name, account_type, institution
+            FROM accounts
+            WHERE is_active = TRUE
+            ORDER BY account_type, account_name
+        """)
+        return {"accounts": [dict(r) for r in cursor.fetchall()]}
+    finally:
+        conn.close()
+
+
 @app.post("/api/import/preview")
 async def import_preview(
     file: UploadFile = File(...),
@@ -2064,6 +2082,37 @@ async def import_preview(
         csv_type = parsed[0]["source"]
 
         conn = get_db_connection()
+
+        # When the user explicitly picked an account, make sure the CSV kind
+        # matches that account's type. Chase reuses the same two CSV layouts
+        # across every credit card, so nothing else stops a personal-card
+        # export from landing in the wrong account (e.g. Sapphire). source is
+        # 'chase_checking' / 'chase_credit'; account_type is 'checking' /
+        # 'credit' / 'savings'.
+        if account_id is not None:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute(
+                "SELECT account_name, account_type FROM accounts WHERE account_id = %s",
+                (account_id,),
+            )
+            acct = cur.fetchone()
+            cur.close()
+            if acct is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Account {account_id} does not exist.",
+                )
+            expected = csv_type.split("_")[-1]  # chase_credit -> credit
+            if acct["account_type"] != expected:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"This looks like a {expected} CSV, but "
+                        f"\"{acct['account_name']}\" is a {acct['account_type']} "
+                        f"account. Pick a matching account or check the file."
+                    ),
+                )
+
         txn_dicts, stats = categorize_parsed(conn, parsed, enable_llm=use_llm)
 
         # Duplicate detection, in two tiers (see import_service.flag_duplicates):
