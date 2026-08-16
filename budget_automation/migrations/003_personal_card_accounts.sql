@@ -11,8 +11,8 @@
 INSERT INTO accounts (account_name, account_type, institution, is_active)
 SELECT v.account_name, v.account_type, v.institution, TRUE
 FROM (VALUES
-    ('Chase Personal Card (Andrew)', 'credit', 'Chase'),
-    ('Chase Personal Card (Wife)',   'credit', 'Chase')
+    ('Chase Freedom Credit - Andrew', 'credit', 'Chase'),
+    ('Chase Freedom Credit - Amanda', 'credit', 'Chase')
 ) AS v(account_name, account_type, institution)
 WHERE NOT EXISTS (
     SELECT 1 FROM accounts a WHERE a.account_name = v.account_name
