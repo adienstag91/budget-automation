@@ -256,6 +256,12 @@ async function postForm(url, formData) {
   return res.json();
 }
 
+// Active accounts, for the import account picker.
+// { accounts: [{account_id, account_name, account_type, institution}] }
+export function listAccounts() {
+  return getJSON(`/api/accounts`);
+}
+
 // Parse + categorize a Chase CSV and return a preview (writes nothing).
 export function importPreview(file, { accountId, useLlm = false } = {}) {
   const fd = new FormData();
