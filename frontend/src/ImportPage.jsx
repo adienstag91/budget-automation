@@ -25,6 +25,15 @@ function fmtDate(s) {
   });
 }
 
+// Chase names its export files "Chase<last4>_Activity_YYYYMMDD.CSV", so the 4
+// digits after "Chase" identify the card. Pull them so the import UI can
+// auto-select the matching account. Returns null when the name has no such run.
+function last4FromFilename(name) {
+  if (!name) return null;
+  const m = name.match(/chase(\d{4})/i);
+  return m ? m[1] : null;
+}
+
 // Two-step import + Amazon enrichment under /import.
 // Nothing is written to the DB until the user confirms a parsed preview.
 export default function ImportPage() {
@@ -153,6 +162,24 @@ function ChaseImport({ lastDates, onImported }) {
       .catch(() => {});
   }, []);
 
+  // Auto-select the account whose stored last4 matches the Chase filename, but
+  // only when exactly one account matches (never guess past an ambiguity). The
+  // user can still change the dropdown afterward.
+  const autoSelectFromFile = useCallback((f, accts) => {
+    const l4 = last4FromFilename(f?.name);
+    if (!l4) return;
+    const matches = accts.filter((a) => a.last4 === l4);
+    if (matches.length === 1) setAccountId(String(matches[0].account_id));
+  }, []);
+
+  // If the account list arrives after a file was already chosen, retry the match.
+  useEffect(() => {
+    if (accounts.length && file && accountId === "") {
+      autoSelectFromFile(file, accounts);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts]);
+
   const runPreview = useCallback(() => {
     if (!file || accountId === "") return;
     setBusy(true);
@@ -203,6 +230,13 @@ function ChaseImport({ lastDates, onImported }) {
 
   const keptCount = preview ? preview.rows.length - excluded.size : 0;
 
+  // Filename-match state, for the hint under the account picker.
+  const fileLast4 = last4FromFilename(file?.name);
+  const selectedAcct = accounts.find((a) => String(a.account_id) === accountId);
+  const autoMatched = fileLast4 && selectedAcct && selectedAcct.last4 === fileLast4;
+  const unmatchedLast4 =
+    fileLast4 && accountId === "" && !accounts.some((a) => a.last4 === fileLast4);
+
   return (
     <div>
       <ChaseLastDates lastDates={lastDates} />
@@ -232,9 +266,13 @@ function ChaseImport({ lastDates, onImported }) {
           type="file"
           accept=".csv,.CSV"
           onChange={(e) => {
-            setFile(e.target.files[0] || null);
+            const f = e.target.files[0] || null;
+            setFile(f);
             setPreview(null);
             setResult(null);
+            // Account is tied to the file: reset, then try to auto-match by last4.
+            setAccountId("");
+            autoSelectFromFile(f, accounts);
           }}
         />
         <label className="import-toggle">
@@ -253,7 +291,20 @@ function ChaseImport({ lastDates, onImported }) {
           {busy && !result ? "Working…" : "Preview"}
         </button>
       </div>
-      {accountId === "" && (
+      {autoMatched && (
+        <p className="import-help">
+          Auto-selected <b>{selectedAcct.account_name}</b> from the filename
+          (…{fileLast4}). Change it above if that's not right.
+        </p>
+      )}
+      {unmatchedLast4 && (
+        <p className="import-help">
+          Filename ends in <b>…{fileLast4}</b> but no account has that last-4 yet
+          — pick one manually, or set the account's last-4 so it auto-matches
+          next time.
+        </p>
+      )}
+      {accountId === "" && !unmatchedLast4 && (
         <p className="import-help">
           Pick which account this CSV belongs to before previewing — Chase uses
           the same file layout for every card, so this is how each card's
