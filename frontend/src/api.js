@@ -257,7 +257,7 @@ async function postForm(url, formData) {
 }
 
 // Active accounts, for the import account picker.
-// { accounts: [{account_id, account_name, account_type, institution}] }
+// { accounts: [{account_id, account_name, account_type, institution, last4}] }
 export function listAccounts() {
   return getJSON(`/api/accounts`);
 }

@@ -2022,7 +2022,7 @@ def list_accounts():
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
-            SELECT account_id, account_name, account_type, institution
+            SELECT account_id, account_name, account_type, institution, last4
             FROM accounts
             WHERE is_active = TRUE
             ORDER BY account_type, account_name
